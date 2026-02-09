@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宝宝智能成长记录仪</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body { background-color: #fff1f2; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .prose h3 { color: #db2777; font-weight: bold; margin-top: 1em; }
+        .prose p { margin-bottom: 0.8em; line-height: 1.6; }
+        .prose ul { list-style-type: disc; padding-left: 1.2em; margin-bottom: 1em; }
+        .prose strong { color: #be185d; }
+    </style>
+</head>
+<body>
+    <div id="app" class="max-w-2xl mx-auto min-h-screen bg-rose-50 shadow-lg relative pb-20">
+        
+        <header class="bg-gradient-to-r from-pink-400 to-rose-500 text-white p-6 rounded-b-3xl shadow-md">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">👶 宝宝成长记录</h1>
+                    <p class="text-pink-100 text-sm mt-1">出生日期：{{ birthDateStr }}</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-3xl font-bold">{{ currentDays }}</div>
+                    <div class="text-xs text-pink-100">当前天数</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="px-4 -mt-6">
+            <div class="bg-white rounded-xl shadow-lg p-5">
+                <h2 class="text-gray-700 font-bold mb-4 flex items-center">
+                    <span class="bg-pink-100 text-pink-500 p-1 rounded mr-2">✏️</span> 
+                    录入今日数据
+                </h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="text-xs text-gray-500 ml-1">测量日期</label>
+                        <input type="date" v-model="input.date" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 outline-none focus:border-pink-400 transition">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 ml-1">体重 (kg) <span class="text-red-400">*</span></label>
+                        <input type="number" step="0.01" v-model="input.weight" placeholder="如 6.57" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 outline-none focus:border-pink-400 transition">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 ml-1">身长 (cm) <span class="text-red-400">*</span></label>
+                        <input type="number" step="0.1" v-model="input.height" placeholder="如 63.0" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 outline-none focus:border-pink-400 transition">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="text-xs text-gray-500 ml-1">头围 (cm) <span class="text-gray-400 text-xs">(选填)</span></label>
+                        <input type="number" step="0.1" v-model="input.head" placeholder="如 39.0" class="w-full bg-gray-50 border border-gray-200 rounded-lg p-3 outline-none focus:border-pink-400 transition">
+                    </div>
+                </div>
+                <button @click="generateAIReport" :disabled="isLoading" class="w-full mt-6 bg-pink-500 hover:bg-pink-600 disabled:bg-gray-400 text-white font-bold py-3 rounded-lg shadow-md transition flex justify-center items-center">
+                    <span v-if="isLoading">🤖 AI 正在思考中...</span>
+                    <span v-else>生成 AI 深度解读 ✨</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="px-4 mt-6">
+            <h3 class="text-lg font-bold text-gray-700 mb-3 ml-1">📅 历史记录</h3>
+            <div class="space-y-3">
+                <div v-for="(item, index) in sortedHistory" :key="index" class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-gray-800">{{ item.dateStr }}</span>
+                            <span class="text-xs bg-pink-100 text-pink-600 px-2 py-0.5 rounded-full">第{{ item.days }}天</span>
+                        </div>
+                        <div class="text-sm text-gray-500 mt-1">
+                            {{ item.weight }}kg | {{ item.height }}cm
+                        </div>
+                    </div>
+                    <button @click="openReport(item)" class="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded border border-blue-100">
+                        查看报告
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" @click="isModalOpen = false"></div>
+            <div class="bg-white w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl relative z-10">
+                <div class="bg-pink-50 p-4 border-b border-pink-100 flex justify-between items-center sticky top-0">
+                    <h3 class="font-bold text-lg text-gray-800">🩺 AI 智能评估</h3>
+                    <button @click="isModalOpen = false" class="text-2xl leading-none">&times;</button>
+                </div>
+                <div class="p-6">
+                    <div v-html="parsedReport" class="prose prose-sm text-gray-600"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                // 👇【重要】请在这里修改宝宝的出生日期
+                const birthDate = new Date('2025-01-01'); 
+                
+                const today = new Date().toISOString().split('T')[0];
+                const input = ref({ date: today, weight: '', height: '', head: '' });
+                const history = ref([]);
+                const isModalOpen = ref(false);
+                const currentReportHtml = ref('');
+                const isLoading = ref(false);
+
+                const birthDateStr = computed(() => birthDate.toISOString().split('T')[0]);
+                const currentDays = computed(() => {
+                    const diff = Math.ceil((new Date() - birthDate) / (1000 * 60 * 60 * 24));
+                    return `${diff} 天`;
+                });
+                const sortedHistory = computed(() => [...history.value].sort((a, b) => b.days - a.days));
+                const parsedReport = computed(() => marked.parse(currentReportHtml.value || ''));
+
+                async function generateAIReport() {
+                    if(!input.value.weight || !input.value.height) { alert("请填写体重和身长哦！"); return; }
+                    
+                    isLoading.value = true;
+                    const d = new Date(input.value.date);
+                    const days = Math.ceil((d - birthDate) / (1000 * 60 * 60 * 24));
+                    
+                    try {
+                        // 1. 调用我们自己的后端 API
+                        const response = await fetch('/api/analyze', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                days: days,
+                                weight: input.value.weight,
+                                height: input.value.height,
+                                head: input.value.head
+                            })
+                        });
+
+                        const data = await response.json();
+                        
+                        // 2. 保存数据
+                        const newRecord = { 
+                            dateStr: input.value.date, 
+                            days, 
+                            weight: input.value.weight, 
+                            height: input.value.height, 
+                            report: data.result 
+                        };
+                        
+                        history.value.unshift(newRecord);
+                        localStorage.setItem('baby_ai_data', JSON.stringify(history.value));
+                        
+                        // 3. 打开报告
+                        currentReportHtml.value = data.result;
+                        isModalOpen.value = true;
+                        
+                    } catch (error) {
+                        alert("AI 有点累，请稍后再试：" + error.message);
+                    } finally {
+                        isLoading.value = false;
+                    }
+                }
+
+                function openReport(item) {
+                    currentReportHtml.value = item.report || "暂无 AI 报告";
+                    isModalOpen.value = true;
+                }
+
+                onMounted(() => {
+                    const saved = localStorage.getItem('baby_ai_data');
+                    if(saved) history.value = JSON.parse(saved);
+                });
+
+                return { input, history, sortedHistory, currentDays, birthDateStr, generateAIReport, isLoading, isModalOpen, parsedReport, openReport };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
