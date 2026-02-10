@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FutureBaby · 智能成长中心</title>
+    <title>FutureBaby · AI Growth Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -41,7 +41,24 @@
             border-color: #8b5cf6;
             box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
         }
-        /* 页面切换动画 */
+        /* 语言切换按钮 */
+        .lang-switch {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(5px);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 800;
+            color: #6366f1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .lang-switch:hover { transform: scale(1.05); }
+
         .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
         .fade-enter-from, .fade-leave-to { opacity: 0; }
     </style>
@@ -49,52 +66,56 @@
 <body class="text-slate-700 min-h-screen">
     <div id="app" class="max-w-md mx-auto min-h-screen relative pb-20">
         
+        <button @click="toggleLang" class="lang-switch">
+            {{ lang === 'zh' ? '🇺🇸 English' : '🇨🇳 中文' }}
+        </button>
+
         <div v-if="globalLoading" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-            <p class="mt-4 text-indigo-600 font-bold">正在连接云端...</p>
+            <p class="mt-4 text-indigo-600 font-bold">{{ t.connecting }}</p>
         </div>
 
         <transition name="fade">
             <div v-if="!user" class="p-6 pt-20 flex flex-col justify-center min-h-screen">
                 <div class="text-center mb-10">
                     <h1 class="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-pink-500">FutureBaby</h1>
-                    <p class="text-slate-500 mt-2 font-semibold tracking-wide">AI 驱动的智能成长中心</p>
+                    <p class="text-slate-500 mt-2 font-semibold tracking-wide">{{ t.slogan }}</p>
                 </div>
                 
                 <div class="glass-card rounded-3xl p-8">
-                    <h2 class="text-xl font-bold mb-6 text-slate-800">✨ 开启探索之旅</h2>
+                    <h2 class="text-xl font-bold mb-6 text-slate-800">{{ t.login_title }}</h2>
                     <div v-if="!sentCode">
-                        <label class="block text-sm font-bold text-slate-500 mb-2 ml-1">您的邮箱</label>
+                        <label class="block text-sm font-bold text-slate-500 mb-2 ml-1">{{ t.email_label }}</label>
                         <input type="email" v-model="email" placeholder="name@example.com" class="input-glass w-full rounded-xl p-4 outline-none mb-6">
                         <button @click="sendMagicCode" :disabled="loading" class="btn-tech w-full text-white font-bold py-4 rounded-xl">
-                            {{ loading ? '发送中...' : '发送验证码 🚀' }}
+                            {{ loading ? t.sending : t.send_btn }}
                         </button>
                     </div>
                     <div v-else>
-                        <p class="text-sm text-slate-500 mb-4">验证码已发送至 <strong>{{ email }}</strong></p>
-                        <label class="block text-sm font-bold text-slate-500 mb-2 ml-1">请输入 6 位验证码</label>
+                        <p class="text-sm text-slate-500 mb-4">{{ t.code_sent_to }} <strong>{{ email }}</strong></p>
+                        <label class="block text-sm font-bold text-slate-500 mb-2 ml-1">{{ t.code_label }}</label>
                         <input type="text" v-model="otpToken" placeholder="123456" class="input-glass w-full rounded-xl p-4 outline-none mb-6 text-center text-2xl tracking-widest font-mono">
                         <button @click="verifyOtp" :disabled="loading" class="btn-tech w-full text-white font-bold py-4 rounded-xl mb-4">
-                            {{ loading ? '验证中...' : '进入系统 ✨' }}
+                            {{ loading ? t.verifying : t.login_confirm }}
                         </button>
-                        <button @click="sentCode = false" class="w-full text-sm text-slate-400">返回修改邮箱</button>
+                        <button @click="sentCode = false" class="w-full text-sm text-slate-400">{{ t.back_email }}</button>
                     </div>
                 </div>
             </div>
         </transition>
 
         <transition name="fade">
-            <div v-if="user && !currentBaby && !showAddBabyForm" class="p-4 pt-8">
+            <div v-if="user && !currentBaby && !showAddBabyForm" class="p-4 pt-12">
                 <div class="flex justify-between items-center mb-8 px-2">
-                    <h2 class="text-2xl font-bold text-slate-800">我的宝宝档案</h2>
-                    <button @click="signOut" class="text-sm text-slate-400 font-bold">退出</button>
+                    <h2 class="text-2xl font-bold text-slate-800">{{ t.my_babies }}</h2>
+                    <button @click="signOut" class="text-sm text-slate-400 font-bold">{{ t.logout }}</button>
                 </div>
 
                 <div v-if="babies.length === 0" class="text-center py-20">
                     <div class="text-6xl mb-4">🐣</div>
-                    <p class="text-slate-500 mb-6">还没有宝宝档案哦</p>
+                    <p class="text-slate-500 mb-6">{{ t.no_baby }}</p>
                     <button @click="showAddBabyForm = true" class="btn-tech text-white px-8 py-3 rounded-full font-bold shadow-lg">
-                        + 添加宝宝
+                        + {{ t.add_baby }}
                     </button>
                 </div>
 
@@ -113,34 +134,34 @@
                     </div>
                     
                     <button v-if="babies.length > 0" @click="showAddBabyForm = true" class="mt-4 w-full py-4 border-2 border-dashed border-indigo-200 text-indigo-400 rounded-2xl font-bold hover:bg-indigo-50 transition">
-                        + 添加另一个宝宝
+                        + {{ t.add_another }}
                     </button>
                 </div>
             </div>
         </transition>
 
         <transition name="fade">
-            <div v-if="user && showAddBabyForm" class="p-6 pt-10">
-                <button @click="showAddBabyForm = false" class="text-slate-400 mb-6 font-bold">← 返回</button>
-                <h2 class="text-2xl font-bold text-slate-800 mb-6">新档案录入</h2>
+            <div v-if="user && showAddBabyForm" class="p-6 pt-16">
+                <button @click="showAddBabyForm = false" class="text-slate-400 mb-6 font-bold">← {{ t.back }}</button>
+                <h2 class="text-2xl font-bold text-slate-800 mb-6">{{ t.new_profile }}</h2>
                 <div class="glass-card rounded-3xl p-6 space-y-4">
                     <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase">宝宝昵称</label>
+                        <label class="text-xs font-bold text-slate-400 uppercase">{{ t.nickname }}</label>
                         <input type="text" v-model="newBaby.name" class="input-glass w-full rounded-xl p-3 mt-1">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase">性别</label>
+                        <label class="text-xs font-bold text-slate-400 uppercase">{{ t.gender }}</label>
                         <div class="flex gap-4 mt-1">
-                            <button @click="newBaby.gender = 'male'" :class="newBaby.gender === 'male' ? 'bg-blue-500 text-white' : 'bg-white text-slate-500'" class="flex-1 py-3 rounded-xl font-bold border transition">👦 男宝</button>
-                            <button @click="newBaby.gender = 'female'" :class="newBaby.gender === 'female' ? 'bg-pink-500 text-white' : 'bg-white text-slate-500'" class="flex-1 py-3 rounded-xl font-bold border transition">👧 女宝</button>
+                            <button @click="newBaby.gender = 'male'" :class="newBaby.gender === 'male' ? 'bg-blue-500 text-white' : 'bg-white text-slate-500'" class="flex-1 py-3 rounded-xl font-bold border transition">{{ t.boy }}</button>
+                            <button @click="newBaby.gender = 'female'" :class="newBaby.gender === 'female' ? 'bg-pink-500 text-white' : 'bg-white text-slate-500'" class="flex-1 py-3 rounded-xl font-bold border transition">{{ t.girl }}</button>
                         </div>
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-slate-400 uppercase">出生日期</label>
+                        <label class="text-xs font-bold text-slate-400 uppercase">{{ t.birth_date }}</label>
                         <input type="date" v-model="newBaby.birth_date" class="input-glass w-full rounded-xl p-3 mt-1">
                     </div>
                     <button @click="createBaby" :disabled="loading" class="btn-tech w-full text-white font-bold py-4 rounded-xl mt-4">
-                        {{ loading ? '创建中...' : '确认创建 ✅' }}
+                        {{ loading ? t.saving : t.create_btn }}
                     </button>
                 </div>
             </div>
@@ -148,60 +169,61 @@
 
         <transition name="fade">
             <div v-if="user && currentBaby" class="pb-20">
-                <div class="sticky top-0 z-30 bg-white/80 backdrop-blur-md px-4 py-4 shadow-sm flex justify-between items-center">
-                    <button @click="currentBaby = null" class="text-slate-400 font-bold text-sm">← 切换宝宝</button>
+                <div class="sticky top-0 z-30 bg-white/80 backdrop-blur-md px-4 py-4 shadow-sm flex justify-between items-center pt-8">
+                    <button @click="currentBaby = null" class="text-slate-400 font-bold text-sm">← {{ t.switch_baby }}</button>
                     <div class="text-center">
                         <h2 class="font-bold text-slate-800">{{ currentBaby.name }}</h2>
-                        <p class="text-xs text-indigo-500 font-bold">{{ calculateDays(currentBaby.birth_date) }}天</p>
+                        <p class="text-xs text-indigo-500 font-bold">{{ calculateDays(currentBaby.birth_date) }} {{ t.days_old }}</p>
                     </div>
-                    <div class="w-12"></div> </div>
+                    <div class="w-12"></div>
+                </div>
 
                 <div class="px-4 mt-6 space-y-6">
                     <div class="glass-card rounded-3xl p-5 border-t-4 border-indigo-500">
                         <h3 class="font-bold text-slate-700 mb-4 flex items-center">
-                            <span class="w-2 h-6 bg-indigo-500 rounded-full mr-2"></span>今日数据录入
+                            <span class="w-2 h-6 bg-indigo-500 rounded-full mr-2"></span>{{ t.record_entry }}
                         </h3>
                         <div class="grid grid-cols-2 gap-3">
                             <input type="date" v-model="input.date" class="input-glass rounded-xl p-3 col-span-2 text-sm">
-                            <input type="number" v-model="input.weight" placeholder="体重 kg" class="input-glass rounded-xl p-3 text-sm">
-                            <input type="number" v-model="input.height" placeholder="身高 cm" class="input-glass rounded-xl p-3 text-sm">
-                            <input type="number" v-model="input.head" placeholder="头围 cm (选填)" class="input-glass rounded-xl p-3 text-sm col-span-2">
+                            <input type="number" v-model="input.weight" :placeholder="t.weight_ph" class="input-glass rounded-xl p-3 text-sm">
+                            <input type="number" v-model="input.height" :placeholder="t.height_ph" class="input-glass rounded-xl p-3 text-sm">
+                            <input type="number" v-model="input.head" :placeholder="t.head_ph" class="input-glass rounded-xl p-3 text-sm col-span-2">
                         </div>
                         <button @click="submitRecord" :disabled="loading" class="btn-tech w-full text-white font-bold py-3 rounded-xl mt-4 shadow-md flex justify-center items-center gap-2">
                             <span v-if="loading" class="animate-spin">⏳</span>
-                            <span>{{ loading ? 'AI 分析中...' : '生成 AI 深度解读 ✨' }}</span>
+                            <span>{{ loading ? t.ai_thinking : t.gen_report }}</span>
                         </button>
                     </div>
 
                     <div class="bg-white rounded-3xl p-5 shadow-sm">
                         <h3 class="font-bold text-slate-700 mb-4 flex items-center justify-between">
-                            <div class="flex items-center"><span class="w-2 h-6 bg-pink-500 rounded-full mr-2"></span>生长曲线 (WHO)</div>
-                            <span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded">实时更新</span>
+                            <div class="flex items-center"><span class="w-2 h-6 bg-pink-500 rounded-full mr-2"></span>{{ t.chart_title }}</div>
+                            <span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded">{{ t.realtime }}</span>
                         </h3>
                         
                         <div class="space-y-6">
                             <div>
-                                <p class="text-xs font-bold text-center text-pink-500 mb-1">体重曲线 (Weight)</p>
+                                <p class="text-xs font-bold text-center text-pink-500 mb-1">{{ t.chart_weight }}</p>
                                 <div class="h-48 relative"><canvas id="chartWeight"></canvas></div>
                             </div>
                             <div>
-                                <p class="text-xs font-bold text-center text-teal-500 mb-1">身长曲线 (Height)</p>
+                                <p class="text-xs font-bold text-center text-teal-500 mb-1">{{ t.chart_height }}</p>
                                 <div class="h-48 relative"><canvas id="chartHeight"></canvas></div>
                             </div>
                             <div>
-                                <p class="text-xs font-bold text-center text-purple-500 mb-1">头围曲线 (Head)</p>
+                                <p class="text-xs font-bold text-center text-purple-500 mb-1">{{ t.chart_head }}</p>
                                 <div class="h-48 relative"><canvas id="chartHead"></canvas></div>
                             </div>
                         </div>
                     </div>
 
                     <div class="space-y-3">
-                        <h3 class="font-bold text-slate-700 ml-2">📅 历史档案</h3>
+                        <h3 class="font-bold text-slate-700 ml-2">{{ t.history_title }}</h3>
                         <div v-for="record in records" :key="record.id" class="bg-white p-4 rounded-2xl shadow-sm flex justify-between items-center border border-slate-50">
                             <div>
                                 <div class="flex items-center gap-2">
                                     <span class="font-bold text-slate-700">{{ record.date }}</span>
-                                    <span class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold">第{{ record.days }}天</span>
+                                    <span class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-bold">Day {{ record.days }}</span>
                                 </div>
                                 <div class="text-xs text-slate-500 mt-1 space-x-2">
                                     <span>⚖️ {{ record.weight }}kg</span>
@@ -209,7 +231,7 @@
                                 </div>
                             </div>
                             <button @click="openReport(record.ai_report)" class="text-xs bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg font-bold hover:bg-indigo-100">
-                                查看报告
+                                {{ t.view_report }}
                             </button>
                         </div>
                     </div>
@@ -222,14 +244,14 @@
                 <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showModal = false"></div>
                 <div class="bg-white w-full max-w-lg h-[85vh] sm:h-auto sm:max-h-[85vh] overflow-hidden rounded-t-3xl sm:rounded-3xl shadow-2xl relative z-10 flex flex-col">
                     <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 flex justify-between items-center shrink-0">
-                        <h3 class="font-bold text-lg text-white">🩺 AI 专家解读</h3>
+                        <h3 class="font-bold text-lg text-white">{{ t.report_title }}</h3>
                         <button @click="showModal = false" class="text-white/80 text-2xl hover:text-white">&times;</button>
                     </div>
                     <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
                         <div v-html="currentReportHtml" class="prose prose-sm prose-indigo text-slate-600"></div>
                     </div>
                     <div class="p-4 bg-white border-t border-slate-100 shrink-0">
-                        <button @click="showModal = false" class="w-full bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200">关闭</button>
+                        <button @click="showModal = false" class="w-full bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200">{{ t.close }}</button>
                     </div>
                 </div>
             </div>
@@ -240,21 +262,117 @@
     <script>
         const { createApp, ref, onMounted, watch, computed, nextTick } = Vue;
 
+        // 🌍 国际化词典 (Language Dictionary)
+        const i18n = {
+            zh: {
+                slogan: "AI 驱动的智能成长中心",
+                login_title: "✨ 开启探索之旅",
+                email_label: "您的邮箱",
+                sending: "发送中...",
+                send_btn: "发送验证码 🚀",
+                code_sent_to: "验证码已发送至",
+                code_label: "请输入 6 位验证码",
+                verifying: "验证中...",
+                login_confirm: "进入系统 ✨",
+                back_email: "返回修改邮箱",
+                my_babies: "我的宝宝档案",
+                logout: "退出",
+                no_baby: "还没有宝宝档案哦",
+                add_baby: "添加宝宝",
+                add_another: "添加另一个宝宝",
+                back: "返回",
+                new_profile: "新档案录入",
+                nickname: "宝宝昵称",
+                gender: "性别",
+                boy: "👦 男宝",
+                girl: "👧 女宝",
+                birth_date: "出生日期",
+                saving: "创建中...",
+                create_btn: "确认创建 ✅",
+                switch_baby: "切换宝宝",
+                days_old: "天",
+                record_entry: "今日数据录入",
+                weight_ph: "体重 kg",
+                height_ph: "身高 cm",
+                head_ph: "头围 cm (选填)",
+                ai_thinking: "AI 分析中...",
+                gen_report: "生成 AI 深度解读 ✨",
+                chart_title: "生长曲线 (WHO)",
+                realtime: "实时更新",
+                chart_weight: "体重曲线 (Weight)",
+                chart_height: "身长曲线 (Height)",
+                chart_head: "头围曲线 (Head)",
+                history_title: "📅 历史档案",
+                view_report: "查看报告",
+                report_title: "🩺 AI 专家解读",
+                close: "关闭",
+                connecting: "正在连接云端..."
+            },
+            en: {
+                slogan: "AI-Powered Baby Growth Assistant",
+                login_title: "✨ Start Your Journey",
+                email_label: "Your Email",
+                sending: "Sending...",
+                send_btn: "Send Code 🚀",
+                code_sent_to: "Code sent to",
+                code_label: "Enter 6-digit Code",
+                verifying: "Verifying...",
+                login_confirm: "Login ✨",
+                back_email: "Change Email",
+                my_babies: "My Babies",
+                logout: "Sign Out",
+                no_baby: "No baby profiles yet",
+                add_baby: "Add Baby",
+                add_another: "Add Another Baby",
+                back: "Back",
+                new_profile: "New Profile",
+                nickname: "Nickname",
+                gender: "Gender",
+                boy: "👦 Boy",
+                girl: "👧 Girl",
+                birth_date: "Birth Date",
+                saving: "Saving...",
+                create_btn: "Create Profile ✅",
+                switch_baby: "Switch",
+                days_old: "days old",
+                record_entry: "Data Entry",
+                weight_ph: "Weight (kg)",
+                height_ph: "Height (cm)",
+                head_ph: "Head Circ. (cm)",
+                ai_thinking: "Analyzing...",
+                gen_report: "Generate AI Insight ✨",
+                chart_title: "Growth Charts (WHO)",
+                realtime: "Live",
+                chart_weight: "Weight Curve",
+                chart_height: "Height Curve",
+                chart_head: "Head Circ. Curve",
+                history_title: "📅 History",
+                view_report: "View Report",
+                report_title: "🩺 AI Expert Insight",
+                close: "Close",
+                connecting: "Connecting to Cloud..."
+            }
+        };
+
         createApp({
             setup() {
-                // 1. 初始化 Supabase
-                // ⚠️ 注意：这里会尝试从 window.env 读取（如果本地开发），但在 Vercel 上我们需要硬编码或通过构建注入。
-                // 为了简化您的操作，我们将使用一个占位符，请您手动替换下面的 URL 和 KEY
-                // 💡 替换提示：在 Vercel 部署时，我们可以直接用 process.env，但在纯 HTML 里，我们得先填进去。
-                // 为了安全，建议您把下面两个字符串替换成您在 Supabase 获取的真实值。
-                const SUPABASE_URL = 'https://lihtuqbwilqlmxhacgeu.supabase.co'; 
-                const SUPABASE_KEY = 'sb_publishable_hatyIe4q8Fr71ksOngaoig_troXToGR';
-                
-                // 如果您在 Vercel 环境变量里设置了，可以在 api/analyze.js 里用。
-                // 但为了前端能登录，这里必须填。
-                // 请把您刚才复制的 URL 和 Anon Key 填在上面。
+                // ============================================
+                // 👇 请务必替换您的 Supabase URL 和 Key 👇
+                // ============================================
+                const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE'; 
+                const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
                 
                 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+                // 语言状态
+                const lang = ref('zh'); // 默认中文
+                const t = computed(() => i18n[lang.value]);
+
+                function toggleLang() {
+                    lang.value = lang.value === 'zh' ? 'en' : 'zh';
+                    // 切换语言后，如果图表存在，刷新一下图表标题
+                    nextTick(renderCharts);
+                }
 
                 // 状态变量
                 const user = ref(null);
@@ -275,9 +393,9 @@
                 const showModal = ref(false);
                 const currentReportHtml = ref('');
 
-                // WHO 数据简化版 (实际项目建议用完整库)
+                // WHO 数据
                 const whoStandards = {
-                    weight: { male: [3.3, 4.5, 5.6, 6.4, 7.0, 7.5, 7.9], female: [3.2, 4.2, 5.1, 5.8, 6.4, 6.9, 7.3] }, // 0-6个月示例
+                    weight: { male: [3.3, 4.5, 5.6, 6.4, 7.0, 7.5, 7.9], female: [3.2, 4.2, 5.1, 5.8, 6.4, 6.9, 7.3] },
                     height: { male: [49.9, 54.7, 58.4, 61.4, 63.9, 65.9, 67.6], female: [49.1, 53.7, 57.1, 59.8, 62.1, 64.0, 65.7] },
                     head: { male: [34.5, 37.3, 39.1, 40.5, 41.6, 42.6, 43.5], female: [33.9, 36.5, 38.3, 39.5, 40.6, 41.5, 42.2] }
                 };
@@ -286,9 +404,8 @@
 
                 // --- 核心逻辑 ---
 
-                // 1. 登录逻辑 (Email OTP)
                 async function sendMagicCode() {
-                    if (!email.value) return alert('请输入邮箱');
+                    if (!email.value) return alert('Please enter email / 请输入邮箱');
                     loading.value = true;
                     const { error } = await supabase.auth.signInWithOtp({ email: email.value });
                     loading.value = false;
@@ -300,7 +417,7 @@
                     loading.value = true;
                     const { data, error } = await supabase.auth.verifyOtp({ email: email.value, token: otpToken.value, type: 'email' });
                     loading.value = false;
-                    if (error) alert('验证码错误');
+                    if (error) alert('Error / 验证码错误');
                     else user.value = data.user;
                 }
 
@@ -311,14 +428,13 @@
                     currentBaby.value = null;
                 }
 
-                // 2. 宝宝管理
                 async function fetchBabies() {
                     const { data } = await supabase.from('babies').select('*').order('created_at', { ascending: false });
                     babies.value = data || [];
                 }
 
                 async function createBaby() {
-                    if(!newBaby.value.name || !newBaby.value.birth_date) return alert('请填写完整');
+                    if(!newBaby.value.name || !newBaby.value.birth_date) return alert('Incomplete Info / 信息不全');
                     loading.value = true;
                     const { error } = await supabase.from('babies').insert([{
                         user_id: user.value.id,
@@ -340,24 +456,22 @@
                     fetchRecords(baby.id);
                 }
 
-                // 3. 记录管理与 AI
                 async function fetchRecords(babyId) {
                     const { data } = await supabase.from('records').select('*').eq('baby_id', babyId).order('date', { ascending: false });
                     records.value = data || [];
-                    nextTick(renderCharts); // 数据更新后重绘图表
+                    nextTick(renderCharts);
                 }
 
                 async function submitRecord() {
-                    if(!input.value.weight || !input.value.height) return alert('请填写体重身高');
+                    if(!input.value.weight || !input.value.height) return alert('Please enter weight & height / 请填写体重身高');
                     loading.value = true;
                     
-                    // 计算天数
                     const birth = new Date(currentBaby.value.birth_date);
                     const recordDate = new Date(input.value.date);
                     const days = Math.ceil((recordDate - birth) / (1000 * 60 * 60 * 24));
                     
                     try {
-                        // 调用 AI 接口
+                        // 🤖 调用 AI: 传递 lang 参数
                         const aiRes = await fetch('/api/analyze', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -367,63 +481,69 @@
                                 height: input.value.height,
                                 head: input.value.head,
                                 gender: currentBaby.value.gender,
-                                name: currentBaby.value.name
+                                name: currentBaby.value.name,
+                                lang: lang.value // 👈 关键：告诉后端当前是中文还是英文
                             })
                         });
-                        const aiData = await aiRes.json();
+                        
+                        let aiReportResult = "";
+                        // 处理可能的 AI 错误，不阻断保存
+                        if (aiRes.ok) {
+                            const aiData = await aiRes.json();
+                            aiReportResult = aiData.result;
+                        } else {
+                            aiReportResult = lang.value === 'en' ? "AI is busy, saved data only." : "专家忙碌，仅保存数据。";
+                        }
 
-                        // 存入 Supabase (这里修复了空值报错)
                         const { error } = await supabase.from('records').insert([{
                             baby_id: currentBaby.value.id,
                             date: input.value.date,
                             days,
                             weight: input.value.weight,
                             height: input.value.height,
-                            // 👇 关键修改在这里：如果是空字符串，转换成 null
                             head: input.value.head ? input.value.head : null,
-                            ai_report: aiData.result
+                            ai_report: aiReportResult
                         }]);
 
                         if(error) throw error;
                         
                         await fetchRecords(currentBaby.value.id);
-                        openReport(aiData.result);
+                        openReport(aiReportResult);
                         
-                        // 可选：提交成功后清空输入框，但保留日期
+                        // 清空输入 (保留日期)
                         input.value.weight = '';
                         input.value.height = '';
                         input.value.head = '';
-                        
+
                     } catch(e) {
-                        alert('出错了: ' + e.message);
+                        alert('Error: ' + e.message);
                     } finally {
                         loading.value = false;
                     }
                 }
 
-                // 4. 图表逻辑 (WHO 标准可视化)
                 function renderCharts() {
+                    if(!currentBaby.value) return;
                     const ctxW = document.getElementById('chartWeight');
                     const ctxH = document.getElementById('chartHeight');
                     const ctxHead = document.getElementById('chartHead');
                     if(!ctxW || !ctxH) return;
 
-                    // 准备数据 (倒序转正序)
                     const sorted = [...records.value].sort((a,b) => a.days - b.days);
                     const labels = sorted.map(r => `Day ${r.days}`);
                     
+                    // 使用 t.value 来获取当前语言的图表标题
                     const createChart = (ctx, label, data, color, stdData) => {
-                        // 如果之前有图表实例，先销毁
                         const chartId = ctx.id;
                         if(charts[chartId]) charts[chartId].destroy();
 
                         charts[chartId] = new Chart(ctx, {
                             type: 'line',
                             data: {
-                                labels: labels.length ? labels : ['出生'],
+                                labels: labels.length ? labels : ['Birth'],
                                 datasets: [
                                     {
-                                        label: `宝宝${label}`,
+                                        label: `${currentBaby.value.name} ${label}`,
                                         data: data,
                                         borderColor: color,
                                         backgroundColor: color,
@@ -431,9 +551,8 @@
                                         pointRadius: 4,
                                         tension: 0.3
                                     },
-                                    // 这里简单模拟一条 50% 标准线，实际需根据天数查表插值
                                     {
-                                        label: 'WHO标准(50%)',
+                                        label: `WHO (50%)`,
                                         data: sorted.map(r => {
                                             const month = Math.min(Math.floor(r.days/30), 6);
                                             return stdData[currentBaby.value.gender][month];
@@ -453,20 +572,22 @@
                         });
                     };
 
-                    createChart(ctxW, '体重', sorted.map(r => r.weight), '#ec4899', whoStandards.weight);
-                    createChart(ctxH, '身高', sorted.map(r => r.height), '#14b8a6', whoStandards.height);
-                    createChart(ctxHead, '头围', sorted.map(r => r.head), '#8b5cf6', whoStandards.head);
+                    // 这里动态传入翻译后的标签
+                    createChart(ctxW, lang.value === 'zh' ? '体重' : 'Weight', sorted.map(r => r.weight), '#ec4899', whoStandards.weight);
+                    createChart(ctxH, lang.value === 'zh' ? '身高' : 'Height', sorted.map(r => r.height), '#14b8a6', whoStandards.height);
+                    createChart(ctxHead, lang.value === 'zh' ? '头围' : 'Head', sorted.map(r => r.head), '#8b5cf6', whoStandards.head);
                 }
 
-                // 辅助函数
                 function calculateAge(birthDate) {
                     const days = Math.ceil((new Date() - new Date(birthDate)) / (1000 * 60 * 60 * 24));
-                    return `${days} 天`;
+                    return `${days} ${t.value.days_old}`;
                 }
-                function calculateDays(birthDate) { return calculateAge(birthDate).replace(' 天',''); }
+                function calculateDays(birthDate) { 
+                    const days = Math.ceil((new Date() - new Date(birthDate)) / (1000 * 60 * 60 * 24));
+                    return days;
+                }
                 function openReport(html) { currentReportHtml.value = marked.parse(html || ''); showModal.value = true; }
 
-                // 初始化检查 Session
                 onMounted(async () => {
                     const { data: { session } } = await supabase.auth.getSession();
                     user.value = session?.user || null;
@@ -486,7 +607,8 @@
                     records, input, showModal, currentReportHtml,
                     sendMagicCode, verifyOtp, signOut,
                     createBaby, selectBaby, submitRecord, openReport,
-                    calculateAge, calculateDays
+                    calculateAge, calculateDays,
+                    lang, t, toggleLang // 导出语言控制
                 };
             }
         }).mount('#app');
