@@ -4,31 +4,39 @@ export const config = {
 
 export default async function handler(request) {
   try {
-    // 1. 检查 API Key 是否存在 (调试第一步)
     const apiKey = process.env.AI_API_KEY;
-    if (!apiKey) {
-      console.error("❌ 致命错误: Vercel 环境变量里找不到 AI_API_KEY！请去 Settings -> Environment Variables 检查。");
-      throw new Error("Missing API Key");
-    }
+    if (!apiKey) throw new Error("Missing API Key");
 
-    // 2. 解析前端数据
-    const { days, weight, height, head, gender, name } = await request.json();
+    const { days, weight, height, head, gender, name, lang } = await request.json();
     
-    // 3. 准备提示词
+    // 3.0 新增：更温暖、更专业的医生人设
     const genderText = gender === 'male' ? '男宝宝' : '女宝宝';
-    const systemPrompt = `你是一位拥有20年经验的儿科专家。
-    正在评估宝宝：${name} (${genderText}, 月龄 ${days}天)。
+    
+    const systemPrompt = `你是一位拥有20年经验的资深儿科专家(Dr. AI)。
+    正在评估宝宝：${name} (${genderText}, 月龄 ${Math.floor(days/30)}个月 ${days%30}天)。
     当前数据：体重${weight}kg, 身高${height}cm${head ? `, 头围${head}cm` : ''}。
     
-    请基于WHO标准进行评估。
-    输出要求：
-    1. 语气亲切、带有鼓励性，称呼宝宝名字。
-    2. 包含【生长现状】(指出百分位水平)、【未来趋势预测】、【本月龄专属建议】。
-    3. 必须使用 Markdown 格式，重要结论加粗。`;
+    请严格按照以下格式输出(不要输出Markdown代码块标记)：
 
-    console.log(`✅ 正在呼叫 AI... 宝宝: ${name}`);
+    <h2 style="text-align:center; font-weight:bold; color:#F97316; margin-bottom:20px;">${name}宝宝的体检报告</h2>
 
-    // 4. 发送请求给硅基流动
+    **亲爱的${name}宝宝家长，您好！我是您的AI儿科医生，很高兴为您评估宝宝的健康成长情况。让我们一起来看看${name}宝宝的表现吧！**
+
+    (空一行)
+    【生长现状评估】
+    (这里请根据WHO标准详细分析百分位，语气要通过肯定和鼓励来缓解家长焦虑)
+
+    【未来趋势预测】
+    (简述接下来的生长重点)
+
+    【本月龄专属建议】
+    (针对该月龄给出喂养、睡眠或大运动发展的具体建议，分点列出)
+
+    要求：
+    1. 行间距宽松，适合手机阅读。
+    2. 语气温暖、专业、像面对面交谈。
+    3. 重点结论加粗显示。`;
+
     const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -39,29 +47,21 @@ export default async function handler(request) {
         model: "deepseek-ai/DeepSeek-V3",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: "请生成体检报告。" }
+          { role: "user", content: "请生成报告" }
         ],
         temperature: 0.7
       })
     });
 
-    // 5. 检查 AI 是否回复了错误 (比如余额不足)
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ AI 服务商拒绝请求: ${response.status} - ${errorText}`);
-      throw new Error(`AI API Error: ${errorText}`);
-    }
-
+    if (!response.ok) throw new Error(`AI API Error: ${response.status}`);
     const data = await response.json();
-    console.log("✅ AI 响应成功！");
 
     return new Response(JSON.stringify({ result: data.choices[0].message.content }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    // 6. 捕获所有错误并打印到日志
-    console.error("🔥 最终报错详情:", error);
-    return new Response(JSON.stringify({ result: "专家正在忙碌，请稍后再试。(后台报错已记录)" }), { status: 500 });
+    console.error("AI Error:", error);
+    return new Response(JSON.stringify({ result: "专家正在忙碌，请稍后再试。" }), { status: 500 });
   }
 }
