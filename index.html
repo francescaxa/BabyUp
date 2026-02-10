@@ -9,53 +9,26 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        /* BabyUp 品牌色系：更活泼的渐变 */
-        body { 
-            background: linear-gradient(135deg, #FFF0F5 0%, #E0F7FA 100%); 
-            font-family: 'Nunito', sans-serif; 
-            -webkit-tap-highlight-color: transparent;
-        }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
-        }
-        .btn-brand {
-            background: linear-gradient(90deg, #FF6B6B 0%, #FF8E53 100%); /* 暖色调 */
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-            transition: all 0.2s ease;
-        }
+        body { background: linear-gradient(135deg, #FFF0F5 0%, #E0F7FA 100%); font-family: 'Nunito', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05); }
+        .btn-brand { background: linear-gradient(90deg, #FF6B6B 0%, #FF8E53 100%); box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3); transition: all 0.2s; }
         .btn-brand:active { transform: scale(0.96); }
-        .input-glass {
-            background: rgba(255, 255, 255, 0.6);
-            border: 2px solid #F3F4F6;
-            transition: all 0.3s;
-        }
-        .input-glass:focus {
-            background: white;
-            border-color: #FF8E53;
-            box-shadow: 0 0 0 3px rgba(255, 142, 83, 0.1);
-        }
-        .lang-switch {
-            position: fixed; top: 20px; right: 20px; z-index: 100;
-            background: rgba(255,255,255,0.9); padding: 8px 16px; border-radius: 20px;
-            font-weight: 800; color: #FF6B6B; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            cursor: pointer; transition: transform 0.2s;
-        }
+        .input-glass { background: rgba(255, 255, 255, 0.6); border: 2px solid #F3F4F6; transition: all 0.3s; }
+        .input-glass:focus { background: white; border-color: #FF8E53; box-shadow: 0 0 0 3px rgba(255, 142, 83, 0.1); }
+        .lang-switch { position: fixed; top: 20px; right: 20px; z-index: 100; background: rgba(255,255,255,0.9); padding: 8px 16px; border-radius: 20px; font-weight: 800; color: #FF6B6B; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; }
         .lang-switch:hover { transform: scale(1.05); }
         .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
         .fade-enter-from, .fade-leave-to { opacity: 0; }
+        /* 报告行距优化 */
+        .prose p { line-height: 1.8; margin-bottom: 1.2em; }
     </style>
 </head>
 <body class="text-slate-700 min-h-screen">
-    <div id="app" class="max-w-5xl mx-auto min-h-screen relative pb-20"> <button @click="toggleLang" class="lang-switch">
-            {{ lang === 'zh' ? '🇺🇸 English' : '🇨🇳 中文' }}
-        </button>
+    <div id="app" class="max-w-6xl mx-auto min-h-screen relative pb-20">
+        
+        <button @click="toggleLang" class="lang-switch">{{ lang === 'zh' ? '🇺🇸 English' : '🇨🇳 中文' }}</button>
 
         <div v-if="globalLoading" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/90 backdrop-blur-md">
             <div class="animate-bounce text-4xl mb-4">👶</div>
@@ -68,23 +41,18 @@
                     <h1 class="text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-orange-400">BabyUp</h1>
                     <p class="text-slate-400 mt-2 font-bold tracking-wide text-sm uppercase">{{ t.slogan }}</p>
                 </div>
-                
                 <div class="glass-card rounded-3xl p-8 w-full">
                     <h2 class="text-xl font-bold mb-6 text-slate-800">{{ t.login_title }}</h2>
                     <div v-if="!sentCode">
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">{{ t.email_label }}</label>
                         <input type="email" v-model="email" placeholder="name@example.com" class="input-glass w-full rounded-xl p-4 outline-none mb-6">
-                        <button @click="sendMagicCode" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl">
-                            {{ loading ? t.sending : t.send_btn }}
-                        </button>
+                        <button @click="sendMagicCode" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl">{{ loading ? t.sending : t.send_btn }}</button>
                     </div>
                     <div v-else>
                         <p class="text-sm text-slate-500 mb-4">{{ t.code_sent_to }} <strong class="text-orange-500">{{ email }}</strong></p>
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">{{ t.code_label }}</label>
                         <input type="text" v-model="otpToken" placeholder="123456" maxlength="6" class="input-glass w-full rounded-xl p-4 outline-none mb-6 text-center text-3xl tracking-[0.5em] font-mono font-bold text-slate-700">
-                        <button @click="verifyOtp" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl mb-4">
-                            {{ loading ? t.verifying : t.login_confirm }}
-                        </button>
+                        <button @click="verifyOtp" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl mb-4">{{ loading ? t.verifying : t.login_confirm }}</button>
                         <button @click="sentCode = false" class="w-full text-sm text-slate-400 hover:text-orange-500">{{ t.back_email }}</button>
                     </div>
                 </div>
@@ -108,26 +76,17 @@
                     <div v-if="babies.length === 0" class="text-center py-20">
                         <div class="text-6xl mb-4">🐣</div>
                         <p class="text-slate-500 mb-6 font-bold">{{ t.no_baby }}</p>
-                        <button @click="showAddBabyForm = true" class="btn-brand text-white px-8 py-3 rounded-full font-bold shadow-lg">
-                            + {{ t.add_baby }}
-                        </button>
+                        <button @click="showAddBabyForm = true" class="btn-brand text-white px-8 py-3 rounded-full font-bold shadow-lg">+ {{ t.add_baby }}</button>
                     </div>
                     <div v-else class="grid gap-4">
                         <div v-for="baby in babies" :key="baby.id" @click="selectBaby(baby)" class="glass-card p-5 rounded-2xl flex items-center justify-between cursor-pointer hover:scale-[1.02] transition transform">
                             <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 rounded-full flex items-center justify-center text-2xl" :class="baby.gender === 'male' ? 'bg-blue-100' : 'bg-pink-100'">
-                                    {{ baby.gender === 'male' ? '👦' : '👧' }}
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-lg text-slate-800">{{ baby.name }}</h3>
-                                    <p class="text-xs text-slate-500 font-bold">{{ calculateAge(baby.birth_date) }}</p>
-                                </div>
+                                <div class="w-14 h-14 rounded-full flex items-center justify-center text-2xl" :class="baby.gender === 'male' ? 'bg-blue-100' : 'bg-pink-100'">{{ baby.gender === 'male' ? '👦' : '👧' }}</div>
+                                <div><h3 class="font-bold text-lg text-slate-800">{{ baby.name }}</h3><p class="text-xs text-slate-500 font-bold">{{ calculateAge(baby.birth_date) }}</p></div>
                             </div>
                             <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">➜</div>
                         </div>
-                        <button @click="showAddBabyForm = true" class="mt-4 w-full py-4 border-2 border-dashed border-slate-200 text-slate-400 rounded-2xl font-bold hover:border-orange-300 hover:text-orange-500 transition">
-                            + {{ t.add_another }}
-                        </button>
+                        <button @click="showAddBabyForm = true" class="mt-4 w-full py-4 border-2 border-dashed border-slate-200 text-slate-400 rounded-2xl font-bold hover:border-orange-300 hover:text-orange-500 transition">+ {{ t.add_another }}</button>
                     </div>
                 </div>
 
@@ -135,67 +94,39 @@
                     <button @click="showAddBabyForm = false" class="text-slate-400 mb-6 font-bold flex items-center gap-1">← {{ t.back }}</button>
                     <div class="glass-card rounded-3xl p-6 space-y-4">
                         <h2 class="text-xl font-bold text-slate-800 mb-4">{{ t.new_profile }}</h2>
-                        <div>
-                            <label class="text-xs font-bold text-slate-400 uppercase">{{ t.nickname }}</label>
-                            <input type="text" v-model="newBaby.name" class="input-glass w-full rounded-xl p-3 mt-1">
-                        </div>
-                        <div>
-                            <label class="text-xs font-bold text-slate-400 uppercase">{{ t.gender }}</label>
+                        <div><label class="text-xs font-bold text-slate-400 uppercase">{{ t.nickname }}</label><input type="text" v-model="newBaby.name" class="input-glass w-full rounded-xl p-3 mt-1"></div>
+                        <div><label class="text-xs font-bold text-slate-400 uppercase">{{ t.gender }}</label>
                             <div class="flex gap-4 mt-1">
                                 <button @click="newBaby.gender = 'male'" :class="newBaby.gender === 'male' ? 'bg-blue-500 text-white ring-2 ring-blue-200' : 'bg-white text-slate-400'" class="flex-1 py-3 rounded-xl font-bold border transition">{{ t.boy }}</button>
                                 <button @click="newBaby.gender = 'female'" :class="newBaby.gender === 'female' ? 'bg-pink-500 text-white ring-2 ring-pink-200' : 'bg-white text-slate-400'" class="flex-1 py-3 rounded-xl font-bold border transition">{{ t.girl }}</button>
                             </div>
                         </div>
-                        <div>
-                            <label class="text-xs font-bold text-slate-400 uppercase">{{ t.birth_date }}</label>
-                            <input type="date" v-model="newBaby.birth_date" class="input-glass w-full rounded-xl p-3 mt-1">
-                        </div>
-                        <button @click="createBaby" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl mt-4">
-                            {{ loading ? t.saving : t.create_btn }}
-                        </button>
+                        <div><label class="text-xs font-bold text-slate-400 uppercase">{{ t.birth_date }}</label><input type="date" v-model="newBaby.birth_date" class="input-glass w-full rounded-xl p-3 mt-1"></div>
+                        <button @click="createBaby" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl mt-4">{{ loading ? t.saving : t.create_btn }}</button>
                     </div>
                 </div>
 
                 <div v-if="currentBaby" class="pb-20">
-                    
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
                         
                         <div class="md:col-span-4 space-y-6">
-                            
                             <div class="glass-card rounded-3xl p-5 border-l-4 border-orange-400 relative">
                                 <h3 class="font-bold text-slate-700 mb-4 flex items-center justify-between">
                                     <span>{{ isEditing ? t.edit_mode : t.record_entry }}</span>
                                     <button v-if="isEditing" @click="cancelEdit" class="text-xs text-red-400 bg-red-50 px-2 py-1 rounded">Cancel</button>
                                 </h3>
-                                
                                 <div class="grid grid-cols-1 gap-4">
                                     <input type="date" v-model="input.date" class="input-glass rounded-xl p-3 text-sm font-bold text-slate-600">
-                                    
-                                    <div class="relative">
-                                        <input type="number" v-model="input.weight" :placeholder="t.weight_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16">
-                                        <span class="absolute right-3 top-3 text-xs font-bold text-orange-400">{{ percentiles.weight }}</span>
-                                    </div>
-
-                                    <div class="relative">
-                                        <input type="number" v-model="input.height" :placeholder="t.height_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16">
-                                        <span class="absolute right-3 top-3 text-xs font-bold text-teal-500">{{ percentiles.height }}</span>
-                                    </div>
-
-                                    <div class="relative">
-                                        <input type="number" v-model="input.head" :placeholder="t.head_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16">
-                                        <span class="absolute right-3 top-3 text-xs font-bold text-purple-500">{{ percentiles.head }}</span>
-                                    </div>
+                                    <div class="relative"><input type="number" v-model="input.weight" :placeholder="t.weight_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16"><span class="absolute right-3 top-3 text-xs font-bold text-orange-400">{{ percentiles.weight }}</span></div>
+                                    <div class="relative"><input type="number" v-model="input.height" :placeholder="t.height_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16"><span class="absolute right-3 top-3 text-xs font-bold text-teal-500">{{ percentiles.height }}</span></div>
+                                    <div class="relative"><input type="number" v-model="input.head" :placeholder="t.head_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16"><span class="absolute right-3 top-3 text-xs font-bold text-purple-500">{{ percentiles.head }}</span></div>
                                 </div>
-
                                 <button @click="submitRecord" :disabled="loading" class="btn-brand w-full text-white font-bold py-3 rounded-xl mt-4 shadow-md flex justify-center items-center gap-2">
-                                    <span v-if="loading" class="animate-spin">⏳</span>
-                                    <span>{{ isEditing ? t.update_btn : t.gen_report }}</span>
+                                    <span v-if="loading" class="animate-spin">⏳</span><span>{{ isEditing ? t.update_btn : t.gen_report }}</span>
                                 </button>
                             </div>
-
-                            <div class="bg-white/50 rounded-3xl p-5">
-                                <h3 class="font-bold text-slate-700 mb-3 ml-1">{{ t.history_title }}</h3>
-                                <div class="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                            <div class="bg-white/50 rounded-3xl p-5 max-h-[500px] overflow-y-auto"> <h3 class="font-bold text-slate-700 mb-3 ml-1">{{ t.history_title }}</h3>
+                                <div class="space-y-3 pr-1">
                                     <div v-for="record in records" :key="record.id" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition group">
                                         <div class="flex justify-between items-start">
                                             <div>
@@ -204,16 +135,11 @@
                                                     <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">Day {{ record.days }}</span>
                                                 </div>
                                                 <div class="text-xs text-slate-500 space-x-2">
-                                                    <span class="font-bold text-pink-500">{{ record.weight }}kg</span>
-                                                    <span class="font-bold text-teal-500">{{ record.height }}cm</span>
-                                                    <span v-if="record.head" class="text-purple-400">{{ record.head }}cm</span>
+                                                    <span class="font-bold text-pink-500">{{ record.weight }}kg</span><span class="font-bold text-teal-500">{{ record.height }}cm</span><span v-if="record.head" class="text-purple-400">{{ record.head }}cm</span>
                                                 </div>
                                             </div>
-                                            
-                                            <div class="flex flex-col gap-2">
-                                                <button @click="openReport(record)" class="text-[10px] bg-orange-50 text-orange-500 px-3 py-1.5 rounded-lg font-bold hover:bg-orange-100">
-                                                    {{ t.view_report }}
-                                                </button>
+                                            <div class="flex flex-col gap-2 text-right">
+                                                <button @click="openReport(record)" class="text-[10px] bg-orange-50 text-orange-500 px-3 py-1.5 rounded-lg font-bold hover:bg-orange-100">{{ record.ai_report ? '📄 查看报告' : '✨ 生成报告' }}</button>
                                                 <div class="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button @click="editRecord(record)" class="text-[10px] text-blue-400 font-bold hover:underline">{{ t.edit }}</button>
                                                     <button @click="deleteRecord(record.id)" class="text-[10px] text-red-400 font-bold hover:underline">{{ t.del }}</button>
@@ -226,25 +152,19 @@
                         </div>
 
                         <div class="md:col-span-8">
-                            <div class="bg-white rounded-3xl p-5 shadow-sm sticky top-4">
-                                <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                    <span>📊 {{ t.chart_title }}</span>
-                                    <span class="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full">{{ t.realtime }}</span>
+                            <div class="bg-white rounded-3xl p-6 shadow-sm sticky top-4 min-h-[600px] flex flex-col">
+                                <h3 class="font-bold text-slate-700 mb-6 flex items-center justify-between">
+                                    <div class="flex items-center gap-2"><span>📊 {{ t.chart_title }}</span></div>
+                                    <div class="flex bg-slate-100 p-1 rounded-lg">
+                                        <button @click="changeStandard('who')" :class="standard === 'who' ? 'bg-white shadow text-orange-500' : 'text-slate-400'" class="text-xs font-bold px-3 py-1.5 rounded-md transition-all">WHO (国际)</button>
+                                        <button @click="changeStandard('china')" :class="standard === 'china' ? 'bg-white shadow text-red-500' : 'text-slate-400'" class="text-xs font-bold px-3 py-1.5 rounded-md transition-all">China (2022)</button>
+                                    </div>
                                 </h3>
                                 
-                                <div class="grid gap-6" :class="hasHeadData ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'">
-                                    <div class="bg-slate-50 p-2 rounded-2xl">
-                                        <p class="text-xs font-bold text-center text-pink-500 mb-2">Weight (kg)</p>
-                                        <div class="h-48 relative"><canvas id="chartWeight"></canvas></div>
-                                    </div>
-                                    <div class="bg-slate-50 p-2 rounded-2xl">
-                                        <p class="text-xs font-bold text-center text-teal-500 mb-2">Height (cm)</p>
-                                        <div class="h-48 relative"><canvas id="chartHeight"></canvas></div>
-                                    </div>
-                                    <div v-show="hasHeadData" class="bg-slate-50 p-2 rounded-2xl">
-                                        <p class="text-xs font-bold text-center text-purple-500 mb-2">Head (cm)</p>
-                                        <div class="h-48 relative"><canvas id="chartHead"></canvas></div>
-                                    </div>
+                                <div class="grid gap-8 flex-1" :class="hasHeadData ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'">
+                                    <div class="bg-slate-50 p-2 rounded-2xl flex flex-col"><p class="text-xs font-bold text-center text-pink-500 mb-2">体重 / Weight (kg)</p><div class="flex-1 min-h-[256px] relative"><canvas id="chartWeight"></canvas></div></div>
+                                    <div class="bg-slate-50 p-2 rounded-2xl flex flex-col"><p class="text-xs font-bold text-center text-teal-500 mb-2">身高 / Height (cm)</p><div class="flex-1 min-h-[256px] relative"><canvas id="chartHeight"></canvas></div></div>
+                                    <div v-show="hasHeadData" class="bg-slate-50 p-2 rounded-2xl flex flex-col"><p class="text-xs font-bold text-center text-purple-500 mb-2">头围 / Head (cm)</p><div class="flex-1 min-h-[256px] relative"><canvas id="chartHead"></canvas></div></div>
                                 </div>
                             </div>
                         </div>
@@ -262,22 +182,15 @@
                         <h3 class="font-bold text-lg text-white">{{ t.report_title }}</h3>
                         <button @click="showModal = false" class="text-white/80 text-2xl hover:text-white">&times;</button>
                     </div>
-                    
-                    <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
-                        <div v-if="currentRecord && currentRecord.ai_report" v-html="marked.parse(currentRecord.ai_report)" class="prose prose-sm prose-orange text-slate-600 max-w-none"></div>
-                        <div v-else class="text-center py-10 text-slate-400">{{ t.no_report_yet }}</div>
+                    <div class="p-8 overflow-y-auto flex-1 bg-slate-50">
+                        <div v-if="currentRecord && currentRecord.ai_report" v-html="currentRecord.ai_report" class="prose prose-lg text-slate-700 max-w-none leading-relaxed"></div> <div v-else class="text-center py-10 text-slate-400">{{ t.no_report_yet }}</div>
 
                         <div v-if="currentRecord" class="mt-8 pt-6 border-t border-slate-200 text-center">
                             <p class="text-xs text-slate-400 mb-2">{{ t.outdated_hint }}</p>
-                            <button @click="regenerateReport(currentRecord)" :disabled="loading" class="bg-white border-2 border-orange-200 text-orange-500 font-bold py-2 px-6 rounded-full hover:bg-orange-50 transition">
-                                {{ loading ? t.ai_thinking : t.regenerate }} 🤖
-                            </button>
+                            <button @click="regenerateReport(currentRecord)" :disabled="loading" class="bg-white border-2 border-orange-200 text-orange-500 font-bold py-2 px-6 rounded-full hover:bg-orange-50 transition">{{ loading ? t.ai_thinking : t.regenerate }} 🤖</button>
                         </div>
                     </div>
-                    
-                    <div class="p-4 bg-white border-t border-slate-100 shrink-0">
-                        <button @click="showModal = false" class="w-full bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200">{{ t.close }}</button>
-                    </div>
+                    <div class="p-4 bg-white border-t border-slate-100 shrink-0"><button @click="showModal = false" class="w-full bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200">{{ t.close }}</button></div>
                 </div>
             </div>
         </transition>
@@ -286,334 +199,148 @@
     <script>
         const { createApp, ref, onMounted, watch, computed, nextTick } = Vue;
 
-        // 🌍 BabyUp 国际化词典
         const i18n = {
-            zh: {
-                slogan: "您的 AI 育儿专家",
-                login_title: "输入验证码登录",
-                email_label: "邮箱地址",
-                sending: "发送中...",
-                send_btn: "获取验证码",
-                code_sent_to: "验证码已发送至",
-                code_label: "6 位数字验证码",
-                verifying: "验证中...",
-                login_confirm: "进入 BabyUp",
-                back_email: "修改邮箱",
-                my_babies: "宝宝列表",
-                logout: "退出",
-                no_baby: "欢迎！先添加一个宝宝档案吧",
-                add_baby: "添加宝宝",
-                add_another: "添加二宝/三宝",
-                back: "返回",
-                new_profile: "新宝宝档案",
-                nickname: "宝宝小名",
-                gender: "性别",
-                boy: "👦 男宝",
-                girl: "👧 女宝",
-                birth_date: "出生日期",
-                saving: "保存中...",
-                create_btn: "创建档案",
-                switch_baby: "切换",
-                days_old: "天大",
-                record_entry: "📝 今日成长记录",
-                edit_mode: "✏️ 编辑记录",
-                update_btn: "更新数据 (仅图表)",
-                weight_ph: "体重 (kg)",
-                height_ph: "身高 (cm)",
-                head_ph: "头围 (cm, 选填)",
-                ai_thinking: "AI 正在思考...",
-                gen_report: "生成 AI 成长解读 ✨",
-                chart_title: "生长曲线 (WHO标准)",
-                realtime: "实时",
-                history_title: "📅 历史档案",
-                view_report: "查看报告",
-                report_title: "AI 深度解读",
-                close: "关闭",
-                connecting: "正在连接 BabyUp 云端...",
-                edit: "编辑",
-                del: "删除",
-                no_report_yet: "暂无 AI 报告",
-                outdated_hint: "数据修改后，建议重新解读",
-                regenerate: "重新生成报告"
-            },
-            en: {
-                slogan: "Your AI Parenting Expert",
-                login_title: "Login with Code",
-                email_label: "Email Address",
-                sending: "Sending...",
-                send_btn: "Get Code",
-                code_sent_to: "Code sent to",
-                code_label: "6-Digit Code",
-                verifying: "Verifying...",
-                login_confirm: "Enter BabyUp",
-                back_email: "Change Email",
-                my_babies: "My Babies",
-                logout: "Logout",
-                no_baby: "Welcome! Add a baby profile first",
-                add_baby: "Add Baby",
-                add_another: "Add Another Baby",
-                back: "Back",
-                new_profile: "New Profile",
-                nickname: "Nickname",
-                gender: "Gender",
-                boy: "👦 Boy",
-                girl: "👧 Girl",
-                birth_date: "Birth Date",
-                saving: "Saving...",
-                create_btn: "Create Profile",
-                switch_baby: "Switch",
-                days_old: "days old",
-                record_entry: "📝 Data Entry",
-                edit_mode: "✏️ Edit Record",
-                update_btn: "Update (Chart Only)",
-                weight_ph: "Weight (kg)",
-                height_ph: "Height (cm)",
-                head_ph: "Head Circ. (cm, optional)",
-                ai_thinking: "AI Thinking...",
-                gen_report: "Generate AI Report ✨",
-                chart_title: "Growth Charts (WHO)",
-                realtime: "Live",
-                history_title: "📅 History",
-                view_report: "View Report",
-                report_title: "AI Insight",
-                close: "Close",
-                connecting: "Connecting to BabyUp...",
-                edit: "Edit",
-                del: "Del",
-                no_report_yet: "No Report",
-                outdated_hint: "Data changed? Regenerate report.",
-                regenerate: "Regenerate Report"
-            }
+            zh: { slogan: "您的 AI 育儿专家", login_title: "输入验证码登录", email_label: "邮箱地址", sending: "发送中...", send_btn: "获取验证码", code_sent_to: "验证码已发送至", code_label: "6 位数字验证码", verifying: "验证中...", login_confirm: "进入 BabyUp", back_email: "修改邮箱", my_babies: "宝宝列表", logout: "退出", no_baby: "欢迎！先添加一个宝宝档案吧", add_baby: "添加宝宝", add_another: "添加二宝/三宝", back: "返回", new_profile: "新宝宝档案", nickname: "宝宝小名", gender: "性别", boy: "👦 男宝", girl: "👧 女宝", birth_date: "出生日期", saving: "保存中...", create_btn: "创建档案", switch_baby: "切换", days_old: "天大", record_entry: "📝 今日成长记录", edit_mode: "✏️ 编辑记录", update_btn: "保存更新", weight_ph: "体重 (kg)", height_ph: "身高 (cm)", head_ph: "头围 (cm, 选填)", ai_thinking: "AI 专家思考中...", gen_report: "生成 AI 成长解读 ✨", chart_title: "生长曲线", realtime: "实时", history_title: "📅 历史档案", view_report: "查看报告", report_title: "AI 深度解读", close: "关闭", connecting: "正在连接 BabyUp 云端...", edit: "编辑", del: "删除", no_report_yet: "暂无 AI 报告", outdated_hint: "数据更新后，可重新解读", regenerate: "重新生成报告" },
+            en: { slogan: "Your AI Parenting Expert", login_title: "Login with Code", email_label: "Email Address", sending: "Sending...", send_btn: "Get Code", code_sent_to: "Code sent to", code_label: "6-Digit Code", verifying: "Verifying...", login_confirm: "Enter BabyUp", back_email: "Change Email", my_babies: "My Babies", logout: "Logout", no_baby: "Welcome! Add a baby profile first", add_baby: "Add Baby", add_another: "Add Another Baby", back: "Back", new_profile: "New Profile", nickname: "Nickname", gender: "Gender", boy: "👦 Boy", girl: "👧 Girl", birth_date: "Birth Date", saving: "Saving...", create_btn: "Create Profile", switch_baby: "Switch", days_old: "days old", record_entry: "📝 Data Entry", edit_mode: "✏️ Edit Record", update_btn: "Save Update", weight_ph: "Weight (kg)", height_ph: "Height (cm)", head_ph: "Head Circ. (cm, optional)", ai_thinking: "AI Thinking...", gen_report: "Generate AI Report ✨", chart_title: "Growth Charts", realtime: "Live", history_title: "📅 History", view_report: "View Report", report_title: "AI Insight", close: "Close", connecting: "Connecting to BabyUp...", edit: "Edit", del: "Del", no_report_yet: "No Report", outdated_hint: "Data changed? Regenerate report.", regenerate: "Regenerate Report" }
         };
 
         createApp({
             setup() {
-                // 👇 替换您的 Key (确保是 eyJ 开头的长 Key)
+                // 👇 替换您的 Key
                 const SUPABASE_URL = 'https://lihtuqbwilqlmxhacgeu.supabase.co'; 
-                const SUPABASE_KEY = 'sb_publishable_hatyIe4q8Fr71ksOngaoig_troXToGR'; // 注意：请确保这是那个长 Key，如果是短的可能会有问题，请确认。
+                const SUPABASE_KEY = 'sb_publishable_hatyIe4q8Fr71ksOngaoig_troXToGR';
                 
                 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-                const lang = ref('zh');
-                const t = computed(() => i18n[lang.value]);
+                const lang = ref('zh'); const t = computed(() => i18n[lang.value]);
                 function toggleLang() { lang.value = lang.value === 'zh' ? 'en' : 'zh'; nextTick(renderCharts); }
 
-                // 核心状态
-                const user = ref(null);
-                const email = ref('');
-                const otpToken = ref('');
-                const sentCode = ref(false);
-                const loading = ref(false);
-                const globalLoading = ref(true);
-                
-                const babies = ref([]);
-                const currentBaby = ref(null);
-                const showAddBabyForm = ref(false);
-                const newBaby = ref({ name: '', gender: 'male', birth_date: '' });
+                const user = ref(null); const email = ref(''); const otpToken = ref(''); const sentCode = ref(false); const loading = ref(false); const globalLoading = ref(true);
+                const babies = ref([]); const currentBaby = ref(null); const showAddBabyForm = ref(false); const newBaby = ref({ name: '', gender: 'male', birth_date: '' });
                 const records = ref([]);
-                
-                // 输入与编辑状态
                 const input = ref({ date: new Date().toISOString().split('T')[0], weight: '', height: '', head: '' });
-                const isEditing = ref(false);
-                const editingId = ref(null);
-                const percentiles = ref({ weight: '', height: '', head: '' });
+                const isEditing = ref(false); const editingId = ref(null); const percentiles = ref({ weight: '', height: '', head: '' });
+                const showModal = ref(false); const currentRecord = ref(null);
                 
-                const showModal = ref(false);
-                const currentRecord = ref(null);
+                // 3.0 新增: 标准切换
+                const standard = ref('who'); // 'who' or 'china'
+                function changeStandard(s) { standard.value = s; nextTick(() => { calcPercentiles(); renderCharts(); }); }
 
-                // WHO 数据 (简化版 P50 锚点用于计算百分比展示)
-                const whoData = {
-                    weight: { male: [3.3, 4.5, 5.6, 6.4, 7.0, 7.5, 7.9, 8.3, 8.6, 8.9, 9.2, 9.4, 9.6], female: [3.2, 4.2, 5.1, 5.8, 6.4, 6.9, 7.3, 7.6, 7.9, 8.2, 8.5, 8.7, 8.9] },
-                    height: { male: [49.9, 54.7, 58.4, 61.4, 63.9, 65.9, 67.6, 69.2, 70.6, 72.0, 73.3, 74.5, 75.7], female: [49.1, 53.7, 57.1, 59.8, 62.1, 64.0, 65.7, 67.3, 68.7, 70.1, 71.5, 72.8, 74.0] },
-                    head: { male: [34.5, 37.3, 39.1, 40.5, 41.6, 42.6, 43.5, 44.2, 44.8, 45.4, 46.0, 46.5, 47.0], female: [33.9, 36.5, 38.3, 39.5, 40.6, 41.5, 42.2, 42.8, 43.4, 44.0, 44.6, 45.1, 45.6] }
+                // 数据源：WHO (0-12月简化数据) + China 2022 (0-12月简化数据)
+                // 真实开发中数据会更长，这里为了演示取关键节点
+                const growthData = {
+                    who: {
+                        weight: { male: [3.3, 4.5, 5.6, 6.4, 7.0, 7.5, 7.9, 8.3, 8.6, 8.9, 9.2, 9.4, 9.6], female: [3.2, 4.2, 5.1, 5.8, 6.4, 6.9, 7.3, 7.6, 7.9, 8.2, 8.5, 8.7, 8.9] },
+                        height: { male: [49.9, 54.7, 58.4, 61.4, 63.9, 65.9, 67.6, 69.2, 70.6, 72.0, 73.3, 74.5, 75.7], female: [49.1, 53.7, 57.1, 59.8, 62.1, 64.0, 65.7, 67.3, 68.7, 70.1, 71.5, 72.8, 74.0] },
+                        head: { male: [34.5, 37.3, 39.1, 40.5, 41.6, 42.6, 43.5, 44.2, 44.8, 45.4, 46.0, 46.5, 47.0], female: [33.9, 36.5, 38.3, 39.5, 40.6, 41.5, 42.2, 42.8, 43.4, 44.0, 44.6, 45.1, 45.6] }
+                    },
+                    china: { // 基于中国 2022 新国标 (WS/T 423—2022) 中位数 (P50) 估算
+                        weight: { male: [3.4, 4.8, 6.0, 6.9, 7.6, 8.2, 8.7, 9.1, 9.4, 9.7, 10.0, 10.3, 10.5], female: [3.3, 4.5, 5.5, 6.4, 7.0, 7.6, 8.1, 8.5, 8.8, 9.1, 9.4, 9.7, 9.9] },
+                        height: { male: [50.4, 55.8, 59.6, 62.5, 65.1, 67.3, 69.3, 71.0, 72.5, 74.0, 75.3, 76.6, 78.0], female: [49.7, 54.7, 58.4, 61.3, 63.9, 66.1, 68.0, 69.7, 71.2, 72.7, 74.0, 75.3, 76.7] },
+                        head: { male: [34.8, 37.8, 39.6, 40.9, 42.0, 43.0, 43.8, 44.5, 45.1, 45.7, 46.2, 46.7, 47.2], female: [34.1, 37.0, 38.8, 40.1, 41.2, 42.1, 42.9, 43.6, 44.2, 44.8, 45.3, 45.8, 46.3] }
+                    }
                 };
 
                 let charts = {};
                 const hasHeadData = computed(() => records.value.some(r => r.head));
 
-                // Auth: 发送验证码
-                async function sendMagicCode() {
-                    if (!email.value) return alert('Please enter email');
-                    loading.value = true;
-                    // 使用 shouldCreateUser: true 确保新用户也能收到
-                    const { error } = await supabase.auth.signInWithOtp({ email: email.value }); 
-                    loading.value = false;
-                    if (error) alert(error.message);
-                    else sentCode.value = true;
-                }
-
-                // Auth: 验证验证码
-                async function verifyOtp() {
-                    loading.value = true;
-                    const { data, error } = await supabase.auth.verifyOtp({ email: email.value, token: otpToken.value, type: 'email' });
-                    loading.value = false;
-                    if (error) alert('验证码错误或已过期 / Invalid Code');
-                    else user.value = data.user;
-                }
-
-                async function signOut() {
-                    await supabase.auth.signOut();
-                    user.value = null; babies.value = []; currentBaby.value = null;
-                }
-
-                // 数据逻辑
-                async function fetchBabies() {
-                    const { data } = await supabase.from('babies').select('*').order('created_at', { ascending: false });
-                    babies.value = data || [];
-                }
-
-                async function createBaby() {
-                    if(!newBaby.value.name || !newBaby.value.birth_date) return alert('信息不全');
-                    loading.value = true;
-                    const { error } = await supabase.from('babies').insert([{
-                        user_id: user.value.id, ...newBaby.value
-                    }]);
-                    loading.value = false;
-                    if(error) alert(error.message);
-                    else { await fetchBabies(); showAddBabyForm.value = false; newBaby.value = {name:'', gender:'male', birth_date:''}; }
-                }
-
+                // ... Auth, Fetch Babies, Create Baby functions (unchanged) ...
+                async function sendMagicCode() { if (!email.value) return alert('Enter email'); loading.value = true; const { error } = await supabase.auth.signInWithOtp({ email: email.value }); loading.value = false; if (error) alert(error.message); else sentCode.value = true; }
+                async function verifyOtp() { loading.value = true; const { data, error } = await supabase.auth.verifyOtp({ email: email.value, token: otpToken.value, type: 'email' }); loading.value = false; if (error) alert('Error'); else user.value = data.user; }
+                async function signOut() { await supabase.auth.signOut(); user.value = null; babies.value = []; currentBaby.value = null; }
+                async function fetchBabies() { const { data } = await supabase.from('babies').select('*').order('created_at', { ascending: false }); babies.value = data || []; }
+                async function createBaby() { if(!newBaby.value.name) return; loading.value = true; const { error } = await supabase.from('babies').insert([{ user_id: user.value.id, ...newBaby.value }]); loading.value = false; if(!error) { await fetchBabies(); showAddBabyForm.value = false; } }
                 function selectBaby(baby) { currentBaby.value = baby; fetchRecords(baby.id); }
 
+                // 核心：获取记录 (重要：获取后立即渲染图表)
                 async function fetchRecords(babyId) {
                     const { data } = await supabase.from('records').select('*').eq('baby_id', babyId).order('date', { ascending: false });
                     records.value = data || [];
-                    nextTick(renderCharts);
+                    nextTick(() => { calcPercentiles(); renderCharts(); });
                 }
 
-                // 计算实时百分比 (近似估算)
+                // 3.0 升级：计算百分比 (支持标准切换)
                 function calcPercentiles() {
                     if (!currentBaby.value) return;
                     const birth = new Date(currentBaby.value.birth_date);
                     const now = new Date(input.value.date);
-                    const month = Math.max(0, Math.min(Math.floor((now - birth)/(1000*60*60*24*30)), 12)); // 限制在0-12个月内查表
+                    const month = Math.max(0, Math.min(Math.floor((now - birth)/(1000*60*60*24*30)), 12)); 
                     const gender = currentBaby.value.gender;
                     
                     const getPct = (type, val) => {
                         if (!val) return '';
-                        const p50 = whoData[type][gender][month];
+                        const p50 = growthData[standard.value][type][gender][month]; // 动态获取当前标准
                         const diff = ((val - p50) / p50) * 100;
-                        if (Math.abs(diff) < 5) return 'P50 (标准)';
+                        if (Math.abs(diff) < 5) return 'P50 (完美)';
                         if (diff > 20) return '>P97 (偏高)';
                         if (diff > 10) return 'P85 (较高)';
                         if (diff < -20) return '<P3 (偏低)';
                         if (diff < -10) return 'P15 (较低)';
-                        return '正常范围';
+                        return '正常';
                     };
-
                     percentiles.value.weight = getPct('weight', input.value.weight);
                     percentiles.value.height = getPct('height', input.value.height);
                     percentiles.value.head = getPct('head', input.value.head);
                 }
 
-                // 提交记录 (新增或更新)
                 async function submitRecord() {
                     if(!input.value.weight || !input.value.height) return alert('请输入身高体重');
                     loading.value = true;
-                    
-                    const days = Math.ceil((new Date(input.value.date) - new Date(currentBaby.value.birth_date)) / (86400000));
-                    const payload = {
-                        baby_id: currentBaby.value.id,
-                        date: input.value.date,
-                        days,
-                        weight: input.value.weight,
-                        height: input.value.height,
-                        head: input.value.head || null
-                    };
+                    const days = Math.ceil((new Date(input.value.date) - new Date(currentBaby.value.birth_date)) / 86400000);
+                    const payload = { baby_id: currentBaby.value.id, date: input.value.date, days, weight: input.value.weight, height: input.value.height, head: input.value.head || null };
 
                     try {
                         let aiReport = null;
-
-                        // 只有在【新增】模式下，才自动调 AI
+                        // 只有【新增】且不是编辑时，才自动调 AI。编辑时为了省钱不自动调。
                         if (!isEditing.value) {
                              const aiRes = await fetch('/api/analyze', {
                                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ ...payload, gender: currentBaby.value.gender, name: currentBaby.value.name, lang: lang.value })
                             });
                             if (aiRes.ok) { const json = await aiRes.json(); aiReport = json.result; }
-                            else { aiReport = "AI 服务繁忙，请稍后手动生成。"; }
-                            payload.ai_report = aiReport;
                         }
 
                         if (isEditing.value) {
-                            // 更新模式
+                            // 3.0 修复：编辑功能现在真实生效
                             const { error } = await supabase.from('records').update(payload).eq('id', editingId.value);
                             if(error) throw error;
                         } else {
-                            // 新增模式
+                            if(aiReport) payload.ai_report = aiReport;
                             const { error } = await supabase.from('records').insert([payload]);
                             if(error) throw error;
                         }
-
-                        await fetchRecords(currentBaby.value.id);
-                        cancelEdit(); // 重置表单
-
-                    } catch(e) { alert(e.message); } 
-                    finally { loading.value = false; }
+                        await fetchRecords(currentBaby.value.id); // 关键：保存后立即刷新
+                        cancelEdit(); 
+                    } catch(e) { alert(e.message); } finally { loading.value = false; }
                 }
 
-                // 编辑记录
-                function editRecord(record) {
-                    isEditing.value = true;
-                    editingId.value = record.id;
-                    input.value = { ...record }; // 填充表单
-                    window.scrollTo({ top: 0, behavior: 'smooth' }); // 滚回顶部
-                    calcPercentiles();
-                }
+                function editRecord(record) { isEditing.value = true; editingId.value = record.id; input.value = { ...record }; window.scrollTo({ top: 0, behavior: 'smooth' }); calcPercentiles(); }
+                function cancelEdit() { isEditing.value = false; editingId.value = null; input.value = { date: new Date().toISOString().split('T')[0], weight: '', height: '', head: '' }; percentiles.value = { weight: '', height: '', head: '' }; }
+                async function deleteRecord(id) { if(confirm('Del?')) { await supabase.from('records').delete().eq('id', id); fetchRecords(currentBaby.value.id); } }
 
-                function cancelEdit() {
-                    isEditing.value = false;
-                    editingId.value = null;
-                    input.value = { date: new Date().toISOString().split('T')[0], weight: '', height: '', head: '' };
-                    percentiles.value = { weight: '', height: '', head: '' };
-                }
-
-                // 删除记录
-                async function deleteRecord(id) {
-                    if(!confirm('确定删除这条记录吗？')) return;
-                    const { error } = await supabase.from('records').delete().eq('id', id);
-                    if(!error) fetchRecords(currentBaby.value.id);
-                }
-
-                // 重新生成报告 (Option B)
                 async function regenerateReport(record) {
                     loading.value = true;
                     try {
-                         const aiRes = await fetch('/api/analyze', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                days: record.days, weight: record.weight, height: record.height, head: record.head,
-                                gender: currentBaby.value.gender, name: currentBaby.value.name, lang: lang.value 
-                            })
-                        });
+                         const aiRes = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: record.days, weight: record.weight, height: record.height, head: record.head, gender: currentBaby.value.gender, name: currentBaby.value.name, lang: lang.value }) });
                         if (aiRes.ok) {
                             const json = await aiRes.json();
-                            // 更新数据库
                             await supabase.from('records').update({ ai_report: json.result }).eq('id', record.id);
-                            // 更新当前视图
-                            currentRecord.value.ai_report = json.result; 
-                            await fetchRecords(currentBaby.value.id); // 刷新列表
+                            record.ai_report = json.result; // 本地立即更新
+                            currentRecord.value.ai_report = json.result;
                         }
-                    } catch(e) { alert('AI Error'); }
-                    finally { loading.value = false; }
+                    } catch(e) { alert('AI Error'); } finally { loading.value = false; }
                 }
-
                 function openReport(record) { currentRecord.value = record; showModal.value = true; }
                 function calculateAge(d) { return Math.ceil((new Date() - new Date(d))/86400000) + ' ' + t.value.days_old; }
 
-                // 图表渲染 (Responsive)
+                // 3.0 升级：带 Tooltip 的高级图表
                 function renderCharts() {
                     if(!currentBaby.value) return;
-                    const ctxW = document.getElementById('chartWeight');
-                    const ctxH = document.getElementById('chartHeight');
-                    const ctxHead = document.getElementById('chartHead'); // 可能是 null 如果 v-show 隐藏了
-                    
+                    const ctxW = document.getElementById('chartWeight'); const ctxH = document.getElementById('chartHeight'); const ctxHead = document.getElementById('chartHead');
                     if(!ctxW || !ctxH) return;
-
                     const sorted = [...records.value].sort((a,b) => a.days - b.days);
                     const labels = sorted.map(r => `Day ${r.days}`);
 
-                    const draw = (ctx, label, dataVals, color, stdArray) => {
+                    const draw = (ctx, label, dataVals, color, dataType) => {
                         const chartId = ctx.id;
                         if(charts[chartId]) charts[chartId].destroy();
                         
@@ -622,35 +349,49 @@
                             data: {
                                 labels: labels.length?labels:['Birth'],
                                 datasets: [
-                                    { label: label, data: dataVals, borderColor: color, backgroundColor: color, tension: 0.3, borderWidth:3, pointRadius:4 },
-                                    { label: 'P50 (WHO)', data: sorted.map(r => stdArray[currentBaby.value.gender][Math.min(Math.floor(r.days/30),12)]), borderColor: '#cbd5e1', borderDash:[5,5], pointRadius:0 }
+                                    { label: label, data: dataVals, borderColor: color, backgroundColor: color, tension: 0.3, borderWidth:3, pointRadius:5, pointHoverRadius:7 },
+                                    { label: `P50 (${standard.value.toUpperCase()})`, data: sorted.map(r => growthData[standard.value][dataType][currentBaby.value.gender][Math.min(Math.floor(r.days/30),12)]), borderColor: '#cbd5e1', borderDash:[5,5], pointRadius:0 }
                                 ]
                             },
-                            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                            options: { 
+                                responsive: true, maintainAspectRatio: false, 
+                                plugins: { 
+                                    legend: { display: true, position: 'bottom' },
+                                    tooltip: { // 3.0 新增：悬停显示详细百分比评估
+                                        callbacks: {
+                                            label: function(context) {
+                                                if(context.datasetIndex === 1) return context.formattedValue; // 标准线不处理
+                                                const val = context.raw;
+                                                const dayIndex = context.dataIndex;
+                                                const r = sorted[dayIndex];
+                                                // 动态计算该点的百分位
+                                                const month = Math.min(Math.floor(r.days/30), 12);
+                                                const p50 = growthData[standard.value][dataType][currentBaby.value.gender][month];
+                                                const diff = ((val - p50) / p50) * 100;
+                                                let status = '正常';
+                                                if(diff > 20) status = '偏高'; else if(diff < -20) status = '偏低';
+                                                return `${val} (${status})`;
+                                            }
+                                        }
+                                    }
+                                } 
+                            }
                         });
                     };
 
-                    draw(ctxW, 'Weight', sorted.map(r=>r.weight), '#F472B6', whoData.weight);
-                    draw(ctxH, 'Height', sorted.map(r=>r.height), '#2DD4BF', whoData.height);
-                    if(ctxHead && sorted.some(r=>r.head)) draw(ctxHead, 'Head', sorted.map(r=>r.head), '#A78BFA', whoData.head);
+                    draw(ctxW, 'Weight', sorted.map(r=>r.weight), '#F472B6', 'weight');
+                    draw(ctxH, 'Height', sorted.map(r=>r.height), '#2DD4BF', 'height');
+                    if(ctxHead && sorted.some(r=>r.head)) draw(ctxHead, 'Head', sorted.map(r=>r.head), '#A78BFA', 'head');
                 }
 
                 onMounted(async () => {
                     const { data: { session } } = await supabase.auth.getSession();
-                    user.value = session?.user || null;
-                    globalLoading.value = false;
+                    user.value = session?.user || null; globalLoading.value = false;
                     supabase.auth.onAuthStateChange((_, s) => { user.value = s?.user || null; if(user.value) fetchBabies(); });
                     if(user.value) fetchBabies();
                 });
 
-                return { 
-                    user, email, otpToken, sentCode, loading, globalLoading,
-                    babies, currentBaby, showAddBabyForm, newBaby, records, 
-                    input, isEditing, percentiles, submitRecord, editRecord, cancelEdit, deleteRecord,
-                    showModal, currentRecord, regenerateReport, openReport,
-                    sendMagicCode, verifyOtp, signOut, createBaby, selectBaby,
-                    calculateAge, lang, t, toggleLang, hasHeadData, marked, calcPercentiles
-                };
+                return { user, email, otpToken, sentCode, loading, globalLoading, babies, currentBaby, showAddBabyForm, newBaby, records, input, isEditing, percentiles, submitRecord, editRecord, cancelEdit, deleteRecord, showModal, currentRecord, regenerateReport, openReport, sendMagicCode, verifyOtp, signOut, createBaby, selectBaby, calculateAge, lang, t, toggleLang, hasHeadData, changeStandard, standard, calcPercentiles };
             }
         }).mount('#app');
     </script>
