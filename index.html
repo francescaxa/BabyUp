@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { background: linear-gradient(135deg, #FFF0F5 0%, #E0F7FA 100%); font-family: 'Nunito', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05); }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08); }
         .btn-brand { background: linear-gradient(90deg, #FF6B6B 0%, #FF8E53 100%); box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3); transition: all 0.2s; }
         .btn-brand:active { transform: scale(0.96); }
         .input-glass { background: rgba(255, 255, 255, 0.8); border: 2px solid #F3F4F6; transition: all 0.3s; }
@@ -22,13 +22,16 @@
         .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
         .fade-enter-from, .fade-leave-to { opacity: 0; }
         
-        /* 📝 AI 报告精美排版 CSS (解决星号和格式问题) */
+        /* 报告样式 */
         .report-content h1, .report-content h2, .report-content h3 { color: #EA580C; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; }
         .report-content strong { color: #0f172a; font-weight: 800; background: linear-gradient(120deg, #ffedd5 0%, #ffedd5 100%); background-repeat: no-repeat; background-size: 100% 40%; background-position: 0 88%; }
         .report-content p { line-height: 1.8; margin-bottom: 1.2em; color: #334155; font-size: 0.95rem; text-align: justify; }
         .report-content ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1.2em; }
         .report-content li { margin-bottom: 0.5em; color: #475569; }
-        .report-content blockquote { border-left: 4px solid #FDBA74; padding-left: 1em; color: #64748b; font-style: italic; background: #fff7ed; padding: 10px; border-radius: 0 8px 8px 0; }
+
+        /* Chart Tabs */
+        .chart-tab { @apply px-4 py-2 text-sm font-bold rounded-t-xl border-b-2 border-transparent text-slate-400 transition-all; }
+        .chart-tab.active { @apply text-slate-700 bg-slate-50 border-orange-400; }
     </style>
 </head>
 <body class="text-slate-700 min-h-screen">
@@ -43,23 +46,47 @@
 
         <transition name="fade">
             <div v-if="!user" class="p-6 pt-20 flex flex-col items-center justify-center min-h-screen max-w-md mx-auto">
-                <div class="text-center mb-10">
+                <div class="text-center mb-8">
                     <h1 class="text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-orange-400">BabyUp</h1>
                     <p class="text-slate-400 mt-2 font-bold tracking-wide text-sm uppercase">{{ t.slogan }}</p>
                 </div>
-                <div class="glass-card rounded-3xl p-8 w-full">
-                    <h2 class="text-xl font-bold mb-6 text-slate-800">{{ t.login_title }}</h2>
-                    <div v-if="!sentCode">
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">{{ t.email_label }}</label>
-                        <input type="email" v-model="email" placeholder="name@example.com" class="input-glass w-full rounded-xl p-4 outline-none mb-6">
-                        <button @click="sendMagicCode" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl shadow-xl">{{ loading ? t.sending : t.send_btn }}</button>
+
+                <div class="glass-card rounded-3xl p-8 w-full shadow-2xl">
+                    <div v-if="authMode !== 'verify'" class="flex mb-6 bg-slate-100 p-1 rounded-xl">
+                        <button @click="authMode = 'login'" :class="authMode === 'login' ? 'bg-white shadow text-orange-500' : 'text-slate-400'" class="flex-1 py-2 rounded-lg font-bold transition">{{ t.login_tab }}</button>
+                        <button @click="authMode = 'register'" :class="authMode === 'register' ? 'bg-white shadow text-orange-500' : 'text-slate-400'" class="flex-1 py-2 rounded-lg font-bold transition">{{ t.register_tab }}</button>
                     </div>
-                    <div v-else>
-                        <p class="text-sm text-slate-500 mb-4">{{ t.code_sent_to }} <strong class="text-orange-500">{{ email }}</strong></p>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">{{ t.code_label }}</label>
-                        <input type="text" v-model="otpToken" placeholder="123456" maxlength="6" class="input-glass w-full rounded-xl p-4 outline-none mb-6 text-center text-3xl tracking-[0.5em] font-mono font-bold text-slate-700">
-                        <button @click="verifyOtp" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl mb-4 shadow-xl">{{ loading ? t.verifying : t.login_confirm }}</button>
-                        <button @click="sentCode = false" class="w-full text-sm text-slate-400 hover:text-orange-500">{{ t.back_email }}</button>
+
+                    <div v-if="authMode === 'login'">
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2">{{ t.email_label }}</label>
+                        <input type="email" v-model="email" class="input-glass w-full rounded-xl p-3 mb-4 font-bold" placeholder="name@example.com">
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2">{{ t.password_label }}</label>
+                        <input type="password" v-model="password" class="input-glass w-full rounded-xl p-3 mb-6 font-bold" placeholder="********">
+                        <button @click="handleLogin" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl shadow-lg mb-4">{{ loading ? t.logging_in : t.login_btn }}</button>
+                        <button @click="authMode = 'forgot'" class="w-full text-xs text-slate-400 hover:text-orange-500 font-bold">{{ t.forgot_password }}</button>
+                    </div>
+
+                    <div v-if="authMode === 'register'">
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2">{{ t.email_label }}</label>
+                        <input type="email" v-model="email" class="input-glass w-full rounded-xl p-3 mb-4 font-bold" placeholder="name@example.com">
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2">{{ t.set_password }}</label>
+                        <input type="password" v-model="password" class="input-glass w-full rounded-xl p-3 mb-6 font-bold" placeholder="Min 6 chars">
+                        <button @click="handleRegister" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl shadow-lg">{{ loading ? t.sending : t.register_btn }}</button>
+                    </div>
+
+                    <div v-if="authMode === 'verify'">
+                        <h3 class="text-center font-bold text-slate-800 text-lg mb-2">{{ t.verify_title }}</h3>
+                        <p class="text-xs text-center text-slate-400 mb-6">{{ t.code_sent_to }} {{ email }}</p>
+                        <input type="text" v-model="otpToken" maxlength="6" class="input-glass w-full rounded-xl p-4 outline-none mb-6 text-center text-3xl tracking-[0.5em] font-mono font-bold text-slate-700">
+                        <button @click="handleVerifyOtp" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl shadow-lg mb-4">{{ loading ? t.verifying : t.confirm_btn }}</button>
+                        <button @click="authMode = 'login'" class="w-full text-sm text-slate-400">{{ t.back_login }}</button>
+                    </div>
+                     <div v-if="authMode === 'forgot'">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4">{{ t.reset_title }}</h3>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-2">{{ t.email_label }}</label>
+                        <input type="email" v-model="email" class="input-glass w-full rounded-xl p-3 mb-6 font-bold">
+                        <button @click="sendResetCode" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl shadow-lg mb-4">{{ loading ? t.sending : t.send_reset_code }}</button>
+                        <button @click="authMode = 'login'" class="w-full text-sm text-slate-400 font-bold">{{ t.back_login }}</button>
                     </div>
                 </div>
             </div>
@@ -107,7 +134,7 @@
                                 <button @click="newBaby.gender = 'female'" :class="newBaby.gender === 'female' ? 'bg-pink-500 text-white ring-2 ring-pink-200 shadow-lg' : 'bg-white text-slate-400'" class="flex-1 py-3 rounded-xl font-bold border transition transform active:scale-95">{{ t.girl }}</button>
                             </div>
                         </div>
-                        <div><label class="text-xs font-bold text-slate-400 uppercase">{{ t.birth_date }}</label><input type="date" :lang="lang === 'en' ? 'en-US' : 'zh-CN'" v-model="newBaby.birth_date" class="input-glass w-full rounded-xl p-3 mt-1"></div>
+                        <div><label class="text-xs font-bold text-slate-400 uppercase">{{ t.birth_date }}</label><input type="date" :max="todayDate" :lang="lang === 'en' ? 'en-US' : 'zh-CN'" v-model="newBaby.birth_date" class="input-glass w-full rounded-xl p-3 mt-1"></div>
                         <button @click="createBaby" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl mt-4 shadow-xl">{{ loading ? t.saving : t.create_btn }}</button>
                     </div>
                 </div>
@@ -122,7 +149,7 @@
                                     <button v-if="isEditing" @click="cancelEdit" class="text-xs text-red-500 bg-red-100 px-3 py-1 rounded-full font-bold hover:bg-red-200 transition">Cancel</button>
                                 </h3>
                                 <div class="grid grid-cols-1 gap-4">
-                                    <input type="date" :lang="lang === 'en' ? 'en-US' : 'zh-CN'" v-model="input.date" class="input-glass rounded-xl p-3 text-sm font-bold text-slate-600">
+                                    <input type="date" :max="todayDate" :lang="lang === 'en' ? 'en-US' : 'zh-CN'" v-model="input.date" class="input-glass rounded-xl p-3 text-sm font-bold text-slate-600">
                                     <div class="relative"><input type="number" v-model="input.weight" :placeholder="t.weight_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded">{{ percentiles.weight }}</span></div>
                                     <div class="relative"><input type="number" v-model="input.height" :placeholder="t.height_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-teal-500 bg-teal-50 px-2 py-1 rounded">{{ percentiles.height }}</span></div>
                                     <div class="relative"><input type="number" v-model="input.head" :placeholder="t.head_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-purple-500 bg-purple-50 px-2 py-1 rounded">{{ percentiles.head }}</span></div>
@@ -136,7 +163,6 @@
                                 <div class="space-y-3 pr-1">
                                     <div v-for="record in records" :key="record.id" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition group relative overflow-hidden">
                                         <div v-if="isEditing && editingId === record.id" class="absolute left-0 top-0 bottom-0 w-1 bg-orange-400"></div>
-                                        
                                         <div class="flex justify-between items-start">
                                             <div>
                                                 <div class="flex items-center gap-2 mb-1">
@@ -162,7 +188,7 @@
 
                         <div class="md:col-span-8">
                             <div class="bg-white rounded-3xl p-6 shadow-sm sticky top-4 min-h-[600px] flex flex-col border border-slate-100">
-                                <h3 class="font-bold text-slate-700 mb-6 flex items-center justify-between">
+                                <h3 class="font-bold text-slate-700 mb-4 flex items-center justify-between">
                                     <div class="flex items-center gap-2"><span>📊 {{ t.chart_title }}</span></div>
                                     <div class="flex bg-slate-100 p-1 rounded-lg">
                                         <button @click="changeStandard('who')" :class="standard === 'who' ? 'bg-white shadow text-orange-500' : 'text-slate-400'" class="text-xs font-bold px-3 py-1.5 rounded-md transition-all">WHO</button>
@@ -170,10 +196,14 @@
                                     </div>
                                 </h3>
                                 
-                                <div class="grid gap-8 flex-1" :class="hasHeadData ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'">
-                                    <div class="bg-slate-50 p-3 rounded-2xl flex flex-col hover:shadow-inner transition"><p class="text-xs font-bold text-center text-pink-500 mb-2">体重 / Weight (kg)</p><div class="flex-1 min-h-[256px] relative"><canvas id="chartWeight"></canvas></div></div>
-                                    <div class="bg-slate-50 p-3 rounded-2xl flex flex-col hover:shadow-inner transition"><p class="text-xs font-bold text-center text-teal-500 mb-2">身高 / Height (cm)</p><div class="flex-1 min-h-[256px] relative"><canvas id="chartHeight"></canvas></div></div>
-                                    <div v-show="hasHeadData" class="bg-slate-50 p-3 rounded-2xl flex flex-col hover:shadow-inner transition"><p class="text-xs font-bold text-center text-purple-500 mb-2">头围 / Head (cm)</p><div class="flex-1 min-h-[256px] relative"><canvas id="chartHead"></canvas></div></div>
+                                <div class="flex space-x-2 border-b border-slate-100 mb-4">
+                                    <button @click="activeChart = 'weight'; nextTick(renderCharts)" :class="activeChart === 'weight' ? 'active text-pink-500 border-pink-400' : ''" class="chart-tab">{{ t.weight_tab }}</button>
+                                    <button @click="activeChart = 'height'; nextTick(renderCharts)" :class="activeChart === 'height' ? 'active text-teal-500 border-teal-400' : ''" class="chart-tab">{{ t.height_tab }}</button>
+                                    <button @click="activeChart = 'head'; nextTick(renderCharts)" :class="activeChart === 'head' ? 'active text-purple-500 border-purple-400' : ''" class="chart-tab">{{ t.head_tab }}</button>
+                                </div>
+
+                                <div class="flex-1 min-h-[400px] relative bg-slate-50 rounded-2xl p-2">
+                                    <canvas id="mainChart"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -182,21 +212,21 @@
                 </div>
             </div>
         </transition>
-
+        
         <transition name="fade">
             <div v-if="showModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
                 <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" @click="showModal = false"></div>
-                <div class="bg-white w-full max-w-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden rounded-t-3xl sm:rounded-3xl shadow-2xl relative z-10 flex flex-col">
+                <div class="bg-white w-full max-w-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden rounded-t-3xl sm:rounded-3xl shadow-2xl relative z-10 flex flex-col transform transition-all scale-100">
                     <div class="bg-gradient-to-r from-orange-400 to-pink-500 p-4 flex justify-between items-center shrink-0">
                         <h3 class="font-bold text-lg text-white flex items-center gap-2"><span class="text-2xl">🩺</span> {{ t.report_title }}</h3>
                         <button @click="showModal = false" class="text-white/80 text-2xl hover:text-white transition">&times;</button>
                     </div>
-                    <div class="p-8 overflow-y-auto flex-1 bg-slate-50 report-content"> <div v-if="currentRecord && currentRecord.ai_report" v-html="renderMarkdown(currentRecord.ai_report)" class="text-slate-700 max-w-none leading-relaxed"></div>
+                    <div class="p-8 overflow-y-auto flex-1 bg-slate-50 report-content">
+                        <div v-if="currentRecord && currentRecord.ai_report" v-html="renderMarkdown(currentRecord.ai_report)" class="text-slate-700 max-w-none leading-relaxed"></div>
                         <div v-else class="text-center py-20">
                             <div class="text-6xl mb-4 text-slate-200">📄</div>
                             <p class="text-slate-400 font-bold">{{ t.no_report_yet }}</p>
                         </div>
-
                         <div v-if="currentRecord" class="mt-8 pt-6 border-t border-slate-200 text-center">
                             <p class="text-xs text-slate-400 mb-2">{{ t.outdated_hint }}</p>
                             <button @click="regenerateReport(currentRecord)" :disabled="loading" class="bg-white border-2 border-orange-200 text-orange-500 font-bold py-2 px-6 rounded-full hover:bg-orange-50 transition shadow-sm">{{ loading ? t.ai_thinking : t.regenerate }} 🤖</button>
@@ -206,14 +236,15 @@
                 </div>
             </div>
         </transition>
+
     </div>
 
     <script>
         const { createApp, ref, onMounted, watch, computed, nextTick } = Vue;
 
         const i18n = {
-            zh: { slogan: "您的 AI 育儿专家", login_title: "输入验证码登录", email_label: "邮箱地址", sending: "发送中...", send_btn: "获取验证码", code_sent_to: "验证码已发送至", code_label: "6 位数字验证码", verifying: "验证中...", login_confirm: "进入 BabyUp", back_email: "修改邮箱", my_babies: "宝宝列表", logout: "退出", no_baby: "欢迎！先添加一个宝宝档案吧", add_baby: "添加宝宝", add_another: "添加二宝/三宝", back: "返回", new_profile: "新宝宝档案", nickname: "宝宝小名", gender: "性别", boy: "👦 男宝", girl: "👧 女宝", birth_date: "出生日期", saving: "保存中...", create_btn: "创建档案", switch_baby: "切换", days_old: "天大", record_entry: "📝 今日成长记录", edit_mode: "✏️ 编辑记录 (修改后自动同步)", update_btn: "保存并更新图表", weight_ph: "体重 (kg)", height_ph: "身高 (cm)", head_ph: "头围 (cm, 选填)", ai_thinking: "AI 专家思考中...", gen_report: "生成 AI 成长解读 ✨", chart_title: "生长曲线", realtime: "实时", history_title: "📅 历史档案", view_report_btn: "📄 查看报告", gen_report_btn: "✨ 生成报告", report_title: "AI 深度解读", close: "关闭", connecting: "正在连接 BabyUp 云端...", edit: "编辑", del: "删除", no_report_yet: "暂无 AI 报告", outdated_hint: "数据更新后，可重新解读", regenerate: "重新生成报告" },
-            en: { slogan: "Your AI Parenting Expert", login_title: "Login with Code", email_label: "Email Address", sending: "Sending...", send_btn: "Get Code", code_sent_to: "Code sent to", code_label: "6-Digit Code", verifying: "Verifying...", login_confirm: "Enter BabyUp", back_email: "Change Email", my_babies: "My Babies", logout: "Logout", no_baby: "Welcome! Add a baby profile first", add_baby: "Add Baby", add_another: "Add Another Baby", back: "Back", new_profile: "New Profile", nickname: "Nickname", gender: "Gender", boy: "👦 Boy", girl: "👧 Girl", birth_date: "Birth Date", saving: "Saving...", create_btn: "Create Profile", switch_baby: "Switch", days_old: "days old", record_entry: "📝 Data Entry", edit_mode: "✏️ Edit Record", update_btn: "Save & Update Charts", weight_ph: "Weight (kg)", height_ph: "Height (cm)", head_ph: "Head Circ. (cm, optional)", ai_thinking: "AI Thinking...", gen_report: "Generate AI Report ✨", chart_title: "Growth Charts", realtime: "Live", history_title: "📅 History", view_report_btn: "📄 View Report", gen_report_btn: "✨ AI Report", report_title: "AI Insight", close: "Close", connecting: "Connecting to BabyUp...", edit: "Edit", del: "Del", no_report_yet: "No Report", outdated_hint: "Data changed? Regenerate report.", regenerate: "Regenerate Report" }
+            zh: { slogan: "您的 AI 育儿专家", login_tab: "登录", register_tab: "注册", login_btn: "安全登录", register_btn: "立即注册", forgot_password: "忘记密码?", reset_title: "重置密码", verify_title: "验证您的邮箱", send_reset_code: "发送重置代码", back_login: "返回登录", confirm_btn: "确认验证", set_password: "设置密码 (至少6位)", password_label: "密码", email_label: "邮箱地址", sending: "发送中...", send_btn: "获取验证码", code_sent_to: "验证码已发送至", code_label: "6 位数字验证码", verifying: "验证中...", login_confirm: "进入 BabyUp", back_email: "修改邮箱", my_babies: "宝宝列表", logout: "退出", no_baby: "欢迎！先添加一个宝宝档案吧", add_baby: "添加宝宝", add_another: "添加二宝/三宝", back: "返回", new_profile: "新宝宝档案", nickname: "宝宝小名", gender: "性别", boy: "👦 男宝", girl: "👧 女宝", birth_date: "出生日期", saving: "保存中...", create_btn: "创建档案", switch_baby: "切换", days_old: "天大", record_entry: "📝 今日成长记录", edit_mode: "✏️ 编辑记录 (修改后自动同步)", update_btn: "保存并更新图表", weight_ph: "体重 (kg)", height_ph: "身高 (cm)", head_ph: "头围 (cm, 选填)", ai_thinking: "AI 专家思考中...", gen_report: "生成 AI 成长解读 ✨", chart_title: "生长曲线", realtime: "实时", history_title: "📅 历史档案", view_report_btn: "📄 查看报告", gen_report_btn: "✨ 生成报告", report_title: "AI 深度解读", close: "关闭", connecting: "正在连接 BabyUp 云端...", edit: "编辑", del: "删除", no_report_yet: "暂无 AI 报告", outdated_hint: "数据更新后，可重新解读", regenerate: "重新生成报告", logging_in: "登录中...", weight_tab: "体重", height_tab: "身高", head_tab: "头围" },
+            en: { slogan: "Your AI Parenting Expert", login_tab: "Login", register_tab: "Register", login_btn: "Secure Login", register_btn: "Sign Up Now", forgot_password: "Forgot Password?", reset_title: "Reset Password", verify_title: "Verify Your Email", send_reset_code: "Send Reset Code", back_login: "Back to Login", confirm_btn: "Confirm Verify", set_password: "Set Password (min 6 chars)", password_label: "Password", email_label: "Email Address", sending: "Sending...", send_btn: "Get Code", code_sent_to: "Code sent to", code_label: "6-Digit Code", verifying: "Verifying...", login_confirm: "Enter BabyUp", back_email: "Change Email", my_babies: "My Babies", logout: "Logout", no_baby: "Welcome! Add a baby profile first", add_baby: "Add Baby", add_another: "Add Another Baby", back: "Back", new_profile: "New Profile", nickname: "Nickname", gender: "Gender", boy: "👦 Boy", girl: "👧 Girl", birth_date: "Birth Date", saving: "Saving...", create_btn: "Create Profile", switch_baby: "Switch", days_old: "days old", record_entry: "📝 Data Entry", edit_mode: "✏️ Edit Record", update_btn: "Save & Update Charts", weight_ph: "Weight (kg)", height_ph: "Height (cm)", head_ph: "Head Circ. (cm, optional)", ai_thinking: "AI Thinking...", gen_report: "Generate AI Report ✨", chart_title: "Growth Charts", realtime: "Live", history_title: "📅 History", view_report_btn: "📄 View Report", gen_report_btn: "✨ AI Report", report_title: "AI Insight", close: "Close", connecting: "Connecting to BabyUp...", edit: "Edit", del: "Del", no_report_yet: "No Report", outdated_hint: "Data changed? Regenerate report.", regenerate: "Regenerate Report", logging_in: "Logging in...", weight_tab: "Weight", height_tab: "Height", head_tab: "Head" }
         };
 
         createApp({
@@ -226,45 +257,69 @@
                 const lang = ref('zh'); const t = computed(() => i18n[lang.value]);
                 function toggleLang() { lang.value = lang.value === 'zh' ? 'en' : 'zh'; nextTick(() => { calcPercentiles(); renderCharts(); }); }
 
-                const user = ref(null); const email = ref(''); const otpToken = ref(''); const sentCode = ref(false); const loading = ref(false); const globalLoading = ref(true);
+                const user = ref(null); const authMode = ref('login'); const email = ref(''); const password = ref(''); const otpToken = ref(''); 
+                const loading = ref(false); const globalLoading = ref(true); const sentCode = ref(false);
                 const babies = ref([]); const currentBaby = ref(null); const showAddBabyForm = ref(false); const newBaby = ref({ name: '', gender: 'male', birth_date: '' });
-                const records = ref([]);
-                const input = ref({ date: new Date().toISOString().split('T')[0], weight: '', height: '', head: '' });
+                const records = ref([]); const input = ref({ date: new Date().toISOString().split('T')[0], weight: '', height: '', head: '' });
                 const isEditing = ref(false); const editingId = ref(null); const percentiles = ref({ weight: '', height: '', head: '' });
-                const showModal = ref(false); const currentRecord = ref(null);
-                const standard = ref('who');
+                const showModal = ref(false); const currentRecord = ref(null); 
+                const standard = ref('who'); // 'who' | 'china'
+                const activeChart = ref('weight'); // 'weight' | 'height' | 'head'
+                const todayDate = new Date().toISOString().split('T')[0];
+
                 function changeStandard(s) { standard.value = s; nextTick(() => { calcPercentiles(); renderCharts(); }); }
 
-                // WHO & China Data (简化版)
+                // --- V5.0 Growth Standards Data (含 P3, P50, P97 以画出范围带) ---
+                // 注意：真实开发应把这些海量数据放在数据库，这里为了演示做了简化
                 const growthData = {
                     who: {
-                        weight: { male: [3.3, 4.5, 5.6, 6.4, 7.0, 7.5, 7.9, 8.3, 8.6, 8.9, 9.2, 9.4, 9.6], female: [3.2, 4.2, 5.1, 5.8, 6.4, 6.9, 7.3, 7.6, 7.9, 8.2, 8.5, 8.7, 8.9] },
-                        height: { male: [49.9, 54.7, 58.4, 61.4, 63.9, 65.9, 67.6, 69.2, 70.6, 72.0, 73.3, 74.5, 75.7], female: [49.1, 53.7, 57.1, 59.8, 62.1, 64.0, 65.7, 67.3, 68.7, 70.1, 71.5, 72.8, 74.0] },
-                        head: { male: [34.5, 37.3, 39.1, 40.5, 41.6, 42.6, 43.5, 44.2, 44.8, 45.4, 46.0, 46.5, 47.0], female: [33.9, 36.5, 38.3, 39.5, 40.6, 41.5, 42.2, 42.8, 43.4, 44.0, 44.6, 45.1, 45.6] }
+                        weight: { 
+                            male: { p3: [2.5,3.4,4.3,5.0,5.6,6.0,6.4,6.7,6.9,7.1,7.4,7.6,7.7], p50: [3.3,4.5,5.6,6.4,7.0,7.5,7.9,8.3,8.6,8.9,9.2,9.4,9.6], p97: [4.2,5.8,7.1,8.0,8.7,9.3,9.8,10.3,10.7,11.0,11.4,11.7,12.0] }, 
+                            female: { p3: [2.4,3.2,3.9,4.5,5.0,5.4,5.7,6.0,6.3,6.5,6.7,6.9,7.0], p50: [3.2,4.2,5.1,5.8,6.4,6.9,7.3,7.6,7.9,8.2,8.5,8.7,8.9], p97: [4.2,5.5,6.6,7.5,8.2,8.8,9.3,9.8,10.2,10.5,10.9,11.2,11.5] } 
+                        },
+                        height: {
+                            male: { p3: [46.1,50.8,54.4,57.3,59.7,61.7,63.3,64.8,66.2,67.5,68.7,69.9,71.0], p50: [49.9,54.7,58.4,61.4,63.9,65.9,67.6,69.2,70.6,72.0,73.3,74.5,75.7], p97: [53.7,58.6,62.4,65.5,68.0,70.1,71.9,73.5,75.0,76.5,77.9,79.2,80.5] },
+                            female: { p3: [45.4,49.8,53.0,55.6,57.8,59.6,61.2,62.7,64.0,65.3,66.5,67.7,68.9], p50: [49.1,53.7,57.1,59.8,62.1,64.0,65.7,67.3,68.7,70.1,71.5,72.8,74.0], p97: [52.9,57.6,61.1,64.0,66.4,68.5,70.3,71.9,73.5,75.0,76.4,77.8,79.2] }
+                        },
+                        head: {
+                            male: { p3: [31.9,34.8,36.7,38.1,39.3,40.3,41.2,42.0,42.7,43.3,43.9,44.5,45.0], p50: [34.5,37.3,39.1,40.5,41.6,42.6,43.5,44.2,44.8,45.4,46.0,46.5,47.0], p97: [37.2,39.8,41.5,42.9,44.0,45.0,45.8,46.5,47.1,47.6,48.2,48.7,49.2] },
+                            female: { p3: [31.5,34.2,36.0,37.3,38.4,39.4,40.3,41.0,41.7,42.3,42.9,43.4,43.9], p50: [33.9,36.5,38.3,39.5,40.6,41.5,42.2,42.8,43.4,44.0,44.6,45.1,45.6], p97: [36.2,39.0,40.6,41.9,43.0,43.9,44.6,45.3,45.9,46.4,46.9,47.4,47.9] }
+                        }
                     },
                     china: {
-                        weight: { male: [3.4, 4.8, 6.0, 6.9, 7.6, 8.2, 8.7, 9.1, 9.4, 9.7, 10.0, 10.3, 10.5], female: [3.3, 4.5, 5.5, 6.4, 7.0, 7.6, 8.1, 8.5, 8.8, 9.1, 9.4, 9.7, 9.9] },
-                        height: { male: [50.4, 55.8, 59.6, 62.5, 65.1, 67.3, 69.3, 71.0, 72.5, 74.0, 75.3, 76.6, 78.0], female: [49.7, 54.7, 58.4, 61.3, 63.9, 66.1, 68.0, 69.7, 71.2, 72.7, 74.0, 75.3, 76.7] },
-                        head: { male: [34.8, 37.8, 39.6, 40.9, 42.0, 43.0, 43.8, 44.5, 45.1, 45.7, 46.2, 46.7, 47.2], female: [34.1, 37.0, 38.8, 40.1, 41.2, 42.1, 42.9, 43.6, 44.2, 44.8, 45.3, 45.8, 46.3] }
+                        weight: {
+                            male: { p3: [2.5,3.6,4.6,5.4,6.0,6.5,7.0,7.3,7.6,7.9,8.2,8.4,8.6], p50: [3.4,4.8,6.0,6.9,7.6,8.2,8.7,9.1,9.4,9.7,10.0,10.3,10.5], p97: [4.2,6.1,7.5,8.5,9.3,10.0,10.6,11.1,11.5,11.9,12.3,12.6,12.9] },
+                            female: { p3: [2.5,3.4,4.2,4.9,5.5,6.0,6.4,6.7,7.0,7.3,7.5,7.7,7.9], p50: [3.3,4.5,5.5,6.4,7.0,7.6,8.1,8.5,8.8,9.1,9.4,9.7,9.9], p97: [4.1,5.7,7.0,8.0,8.8,9.5,10.0,10.5,10.9,11.3,11.7,12.0,12.3] }
+                        },
+                        height: {
+                            male: { p3: [46.7,51.8,55.5,58.5,61.0,63.1,65.0,66.6,68.0,69.5,70.8,72.0,73.3], p50: [50.4,55.8,59.6,62.5,65.1,67.3,69.3,71.0,72.5,74.0,75.3,76.6,78.0], p97: [54.0,59.8,63.7,66.6,69.1,71.3,73.3,75.1,76.8,78.4,79.9,81.3,82.7] },
+                            female: { p3: [46.0,50.8,54.4,57.3,59.7,61.9,63.8,65.4,66.8,68.2,69.6,70.8,72.0], p50: [49.7,54.7,58.4,61.3,63.9,66.1,68.0,69.7,71.2,72.7,74.0,75.3,76.7], p97: [53.2,58.6,62.4,65.4,68.0,70.3,72.2,73.9,75.6,77.1,78.6,80.0,81.4] }
+                        },
+                        head: {
+                            male: { p3: [32.1,35.0,36.8,38.1,39.1,40.1,40.9,41.6,42.2,42.8,43.3,43.8,44.3], p50: [34.8,37.8,39.6,40.9,42.0,43.0,43.8,44.5,45.1,45.7,46.2,46.7,47.2], p97: [37.3,40.5,42.3,43.7,44.8,45.8,46.7,47.4,48.0,48.6,49.1,49.6,50.1] },
+                            female: { p3: [31.5,34.3,36.0,37.3,38.4,39.3,40.1,40.8,41.4,41.9,42.4,42.9,43.4], p50: [34.1,37.0,38.8,40.1,41.2,42.1,42.9,43.6,44.2,44.8,45.3,45.8,46.3], p97: [36.6,39.7,41.5,42.8,44.0,45.0,45.8,46.5,47.1,47.7,48.2,48.7,49.2] }
+                        }
                     }
                 };
 
-                let charts = {};
-                const hasHeadData = computed(() => records.value.some(r => r.head));
+                let mainChart = null;
 
-                // Auth & Setup
-                async function sendMagicCode() { if (!email.value) return alert('Enter email'); loading.value = true; const { error } = await supabase.auth.signInWithOtp({ email: email.value }); loading.value = false; if (error) alert(error.message); else sentCode.value = true; }
-                async function verifyOtp() { loading.value = true; const { data, error } = await supabase.auth.verifyOtp({ email: email.value, token: otpToken.value, type: 'email' }); loading.value = false; if (error) alert('Error'); else user.value = data.user; }
-                async function signOut() { await supabase.auth.signOut(); user.value = null; babies.value = []; currentBaby.value = null; }
-                async function fetchBabies() { const { data } = await supabase.from('babies').select('*').order('created_at', { ascending: false }); babies.value = data || []; }
-                async function createBaby() { if(!newBaby.value.name) return; loading.value = true; const { error } = await supabase.from('babies').insert([{ user_id: user.value.id, ...newBaby.value }]); loading.value = false; if(!error) { await fetchBabies(); showAddBabyForm.value = false; } }
-                function selectBaby(baby) { currentBaby.value = baby; fetchRecords(baby.id); }
+                // Auth Functions ... (Same as V4)
+                async function handleLogin() { if(!email.value||!password.value) return; loading.value=true; const {data,error}=await supabase.auth.signInWithPassword({email:email.value,password:password.value}); loading.value=false; if(error)alert(error.message);else user.value=data.user; }
+                async function handleRegister() { if(!email.value||!password.value) return; if(password.value.length<6)return alert('Min 6'); loading.value=true; const {data,error}=await supabase.auth.signUp({email:email.value,password:password.value}); loading.value=false; if(error)alert(error.message);else {authMode.value='verify';sentCode.value=true;} }
+                async function handleVerifyOtp() { if(!otpToken.value) return; loading.value=true; const {data,error}=await supabase.auth.verifyOtp({email:email.value,token:otpToken.value,type:'signup'}); loading.value=false; if(error)alert(error.message);else {user.value=data.user;authMode.value='login';} }
+                async function sendResetCode() { if(!email.value) return; loading.value=true; const {error}=await supabase.auth.resetPasswordForEmail(email.value); loading.value=false; if(error)alert(error.message);else alert('Sent'); }
+                async function signOut() { await supabase.auth.signOut(); user.value=null; babies.value=[]; currentBaby.value=null; authMode.value='login'; }
 
-                // 核心修复: 获取数据后强制重绘
+                // App Functions
+                async function fetchBabies() { const {data}=await supabase.from('babies').select('*').order('created_at',{ascending:false}); babies.value=data||[]; }
+                async function createBaby() { if(!newBaby.value.name||!newBaby.value.birth_date)return; if(new Date(newBaby.value.birth_date)>new Date())return alert('No future date'); loading.value=true; const {error}=await supabase.from('babies').insert([{user_id:user.value.id,...newBaby.value}]); loading.value=false; if(!error){await fetchBabies();showAddBabyForm.value=false;} }
+                function selectBaby(baby) { currentBaby.value=baby; fetchRecords(baby.id); }
+
                 async function fetchRecords(babyId) {
-                    const { data } = await supabase.from('records').select('*').eq('baby_id', babyId).order('date', { ascending: false });
-                    records.value = data || [];
-                    nextTick(() => { calcPercentiles(); renderCharts(); });
+                    const {data}=await supabase.from('records').select('*').eq('baby_id',babyId).order('date',{ascending:false});
+                    records.value=data||[];
+                    nextTick(()=>{calcPercentiles(); renderCharts();});
                 }
 
                 function calcPercentiles() {
@@ -273,17 +328,11 @@
                     const now = new Date(input.value.date);
                     const month = Math.max(0, Math.min(Math.floor((now - birth)/(1000*60*60*24*30)), 12)); 
                     const gender = currentBaby.value.gender;
-                    
                     const getPct = (type, val) => {
                         if (!val) return '';
-                        const p50 = growthData[standard.value][type][gender][month];
+                        const p50 = growthData[standard.value][type][gender].p50[month];
                         const diff = ((val - p50) / p50) * 100;
-                        if (Math.abs(diff) < 5) return 'P50 (完美)';
-                        if (diff > 20) return '>P97 (偏高)';
-                        if (diff > 10) return 'P85 (较高)';
-                        if (diff < -20) return '<P3 (偏低)';
-                        if (diff < -10) return 'P15 (较低)';
-                        return '正常';
+                        if (Math.abs(diff) < 5) return 'P50'; if (diff > 20) return '>P97'; if (diff > 10) return 'P85'; if (diff < -20) return '<P3'; if (diff < -10) return 'P15'; return 'Normal';
                     };
                     percentiles.value.weight = getPct('weight', input.value.weight);
                     percentiles.value.height = getPct('height', input.value.height);
@@ -291,10 +340,13 @@
                 }
 
                 async function submitRecord() {
-                    if(!input.value.weight || !input.value.height) return alert('请输入身高体重');
-                    loading.value = true;
-                    const days = Math.ceil((new Date(input.value.date) - new Date(currentBaby.value.birth_date)) / 86400000);
-                    const payload = { baby_id: currentBaby.value.id, date: input.value.date, days, weight: input.value.weight, height: input.value.height, head: input.value.head || null };
+                    const w=parseFloat(input.value.weight); const h=parseFloat(input.value.height);
+                    if(!w||!h) return alert('Input required');
+                    if(w<1||w>50) return alert('Invalid weight'); if(h<20||h>150) return alert('Invalid height');
+                    if(new Date(input.value.date)>new Date()) return alert('No future date');
+                    loading.value=true;
+                    const days=Math.ceil((new Date(input.value.date)-new Date(currentBaby.value.birth_date))/86400000);
+                    const payload={baby_id:currentBaby.value.id,date:input.value.date,days,weight:w,height:h,head:input.value.head||null};
 
                     try {
                         let aiReport = null;
@@ -305,98 +357,137 @@
                             });
                             if (aiRes.ok) { const json = await aiRes.json(); aiReport = json.result; }
                         }
-
                         if (isEditing.value) {
-                            // 🚀 核心修复：更新后立即本地更新数组 + 刷新图表
-                            const { error } = await supabase.from('records').update(payload).eq('id', editingId.value);
+                            const {error} = await supabase.from('records').update(payload).eq('id', editingId.value);
                             if(error) throw error;
-                            
-                            // 手动更新本地数据，实现"零延迟"
                             const index = records.value.findIndex(r => r.id === editingId.value);
-                            if (index !== -1) {
-                                records.value[index] = { ...records.value[index], ...payload };
-                            }
+                            if (index !== -1) records.value[index] = { ...records.value[index], ...payload };
                         } else {
                             if(aiReport) payload.ai_report = aiReport;
-                            const { error } = await supabase.from('records').insert([payload]);
+                            const {error} = await supabase.from('records').insert([payload]);
                             if(error) throw error;
-                            await fetchRecords(currentBaby.value.id); // 新增必须重拉
+                            // 2.0 新增：如果是新增记录且有 AI 报告，自动弹窗
+                            if (aiReport) { currentRecord.value = { ...payload, ai_report: aiReport }; showModal.value = true; }
+                            await fetchRecords(currentBaby.value.id);
                         }
-
-                        // 强制重绘
                         nextTick(() => { renderCharts(); calcPercentiles(); });
                         cancelEdit(); 
                     } catch(e) { alert(e.message); } finally { loading.value = false; }
                 }
 
-                function editRecord(record) { isEditing.value = true; editingId.value = record.id; input.value = { ...record }; window.scrollTo({ top: 0, behavior: 'smooth' }); calcPercentiles(); }
-                function cancelEdit() { isEditing.value = false; editingId.value = null; input.value = { date: new Date().toISOString().split('T')[0], weight: '', height: '', head: '' }; percentiles.value = { weight: '', height: '', head: '' }; }
-                async function deleteRecord(id) { if(confirm('Del?')) { await supabase.from('records').delete().eq('id', id); fetchRecords(currentBaby.value.id); } }
+                // ... other functions (edit, delete etc) ...
+                function editRecord(record) { isEditing.value=true; editingId.value=record.id; input.value={...record}; window.scrollTo({top:0,behavior:'smooth'}); calcPercentiles(); }
+                function cancelEdit() { isEditing.value=false; editingId.value=null; input.value={date:new Date().toISOString().split('T')[0],weight:'',height:'',head:''}; percentiles.value={weight:'',height:'',head:''}; }
+                async function deleteRecord(id) { if(confirm('Del?')) { await supabase.from('records').delete().eq('id',id); fetchRecords(currentBaby.value.id); } }
+                async function regenerateReport(record) { loading.value=true; try{ const aiRes=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({days:record.days,weight:record.weight,height:record.height,head:record.head,gender:currentBaby.value.gender,name:currentBaby.value.name,lang:lang.value})}); if(aiRes.ok){ const json=await aiRes.json(); await supabase.from('records').update({ai_report:json.result}).eq('id',record.id); record.ai_report=json.result; currentRecord.value.ai_report=json.result; } }catch(e){alert('Error');}finally{loading.value=false;} }
+                function openReport(record) { currentRecord.value=record; showModal.value=true; }
+                function calculateAge(d) { return Math.ceil((new Date()-new Date(d))/86400000)+' '+t.value.days_old; }
+                function renderMarkdown(text) { return marked.parse(text||''); }
 
-                async function regenerateReport(record) {
-                    loading.value = true;
-                    try {
-                         const aiRes = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ days: record.days, weight: record.weight, height: record.height, head: record.head, gender: currentBaby.value.gender, name: currentBaby.value.name, lang: lang.value }) });
-                        if (aiRes.ok) {
-                            const json = await aiRes.json();
-                            await supabase.from('records').update({ ai_report: json.result }).eq('id', record.id);
-                            record.ai_report = json.result; 
-                            currentRecord.value.ai_report = json.result;
-                        }
-                    } catch(e) { alert('AI Error'); } finally { loading.value = false; }
-                }
-                function openReport(record) { currentRecord.value = record; showModal.value = true; }
-                function calculateAge(d) { return Math.ceil((new Date() - new Date(d))/86400000) + ' ' + t.value.days_old; }
-                function renderMarkdown(text) { return marked.parse(text || ''); } // 渲染 Markdown
-
-                // 图表
+                // V5.0 Super Chart (With Background Curves)
                 function renderCharts() {
                     if(!currentBaby.value) return;
-                    const ctxW = document.getElementById('chartWeight'); const ctxH = document.getElementById('chartHeight'); const ctxHead = document.getElementById('chartHead');
-                    if(!ctxW || !ctxH) return;
+                    const ctx = document.getElementById('mainChart');
+                    if(!ctx) return;
+                    
+                    if(mainChart) mainChart.destroy(); // 销毁旧图
+                    
                     const sorted = [...records.value].sort((a,b) => a.days - b.days);
                     const labels = sorted.map(r => `Day ${r.days}`);
+                    const gender = currentBaby.value.gender;
+                    const type = activeChart.value; // 'weight', 'height', or 'head'
+                    
+                    // 获取当前标准数据 (P3, P50, P97)
+                    const stdData = growthData[standard.value][type][gender];
+                    // 简单的月份映射 (0-12月)
+                    const getStdPoints = (arr) => sorted.map(r => arr[Math.min(Math.floor(r.days/30), 12)]);
+                    
+                    // 颜色配置
+                    const colors = { weight: '#F472B6', height: '#2DD4BF', head: '#A78BFA' };
+                    const mainColor = colors[type];
 
-                    const draw = (ctx, label, dataVals, color, dataType) => {
-                        const chartId = ctx.id;
-                        if(charts[chartId]) charts[chartId].destroy(); // 销毁旧图表
-                        
-                        charts[chartId] = new Chart(ctx, {
-                            type: 'line',
-                            data: {
-                                labels: labels.length?labels:['Birth'],
-                                datasets: [
-                                    { label: label, data: dataVals, borderColor: color, backgroundColor: color, tension: 0.3, borderWidth:3, pointRadius:5, pointHoverRadius:7 },
-                                    { label: `P50 (${standard.value.toUpperCase()})`, data: sorted.map(r => growthData[standard.value][dataType][currentBaby.value.gender][Math.min(Math.floor(r.days/30),12)]), borderColor: '#cbd5e1', borderDash:[5,5], pointRadius:0 }
-                                ]
-                            },
-                            options: { 
-                                responsive: true, maintainAspectRatio: false, 
-                                plugins: { 
-                                    legend: { display: true, position: 'bottom' },
-                                    tooltip: {
-                                        callbacks: {
-                                            label: function(context) {
-                                                if(context.datasetIndex === 1) return context.formattedValue;
-                                                const val = context.raw;
-                                                const dayIndex = context.dataIndex;
-                                                const r = sorted[dayIndex];
-                                                const month = Math.min(Math.floor(r.days/30), 12);
-                                                const p50 = growthData[standard.value][dataType][currentBaby.value.gender][month];
-                                                const diff = ((val - p50) / p50) * 100;
-                                                let status = '正常';
-                                                if(diff > 20) status = '偏高'; else if(diff < -20) status = '偏低';
-                                                return `${val} (${status})`;
-                                            }
+                    mainChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels.length ? labels : ['Birth'],
+                            datasets: [
+                                // 1. 用户数据 (实线，加粗)
+                                {
+                                    label: `${currentBaby.value.name}`,
+                                    data: sorted.map(r => r[type]),
+                                    borderColor: mainColor,
+                                    backgroundColor: mainColor,
+                                    borderWidth: 4,
+                                    pointRadius: 6,
+                                    pointHoverRadius: 8,
+                                    tension: 0.3,
+                                    order: 1 // 最上层
+                                },
+                                // 2. 标准线 P50 (虚线，深灰)
+                                {
+                                    label: 'P50 (Standard)',
+                                    data: getStdPoints(stdData.p50),
+                                    borderColor: '#94a3b8',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5],
+                                    pointRadius: 0,
+                                    tension: 0.4,
+                                    order: 2
+                                },
+                                // 3. 标准线 P97 (上限，浅灰)
+                                {
+                                    label: 'P97',
+                                    data: getStdPoints(stdData.p97),
+                                    borderColor: '#cbd5e1',
+                                    borderWidth: 1,
+                                    pointRadius: 0,
+                                    tension: 0.4,
+                                    order: 3
+                                },
+                                // 4. 标准线 P3 (下限，浅灰)
+                                {
+                                    label: 'P3',
+                                    data: getStdPoints(stdData.p3),
+                                    borderColor: '#cbd5e1',
+                                    borderWidth: 1,
+                                    pointRadius: 0,
+                                    tension: 0.4,
+                                    fill: '-1', // 填充到上一条线 (P97)，形成灰色背景带
+                                    backgroundColor: 'rgba(241, 245, 249, 0.5)', // 淡淡的背景带
+                                    order: 4
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: { mode: 'index', intersect: false },
+                            plugins: {
+                                legend: { position: 'bottom' },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            if(context.datasetIndex > 0) return context.dataset.label + ': ' + context.formattedValue;
+                                            // 用户数据的 Tooltip
+                                            const val = context.raw;
+                                            const dayIndex = context.dataIndex;
+                                            const r = sorted[dayIndex];
+                                            const month = Math.min(Math.floor(r.days/30), 12);
+                                            const p50 = stdData.p50[month];
+                                            const diff = ((val - p50) / p50) * 100;
+                                            let status = '正常';
+                                            if(diff > 20) status = '偏高'; else if(diff < -20) status = '偏低';
+                                            return `${currentBaby.value.name}: ${val} (${status})`;
                                         }
                                     }
-                                } 
+                                }
+                            },
+                            scales: {
+                                y: { beginAtZero: false, grid: { color: '#f1f5f9' } },
+                                x: { grid: { display: false } }
                             }
-                        });
-                    };
-                    draw(ctxW, 'Weight', sorted.map(r=>r.weight), '#F472B6', 'weight');
-                    draw(ctxH, 'Height', sorted.map(r=>r.height), '#2DD4BF', 'height');
-                    if(ctxHead && sorted.some(r=>r.head)) draw(ctxHead, 'Head', sorted.map(r=>r.head), '#A78BFA', 'head');
+                        }
+                    });
                 }
 
                 onMounted(async () => {
@@ -406,7 +497,7 @@
                     if(user.value) fetchBabies();
                 });
 
-                return { user, email, otpToken, sentCode, loading, globalLoading, babies, currentBaby, showAddBabyForm, newBaby, records, input, isEditing, percentiles, submitRecord, editRecord, cancelEdit, deleteRecord, showModal, currentRecord, regenerateReport, openReport, sendMagicCode, verifyOtp, signOut, createBaby, selectBaby, calculateAge, lang, t, toggleLang, hasHeadData, changeStandard, standard, calcPercentiles, renderMarkdown };
+                return { user, authMode, email, password, otpToken, sentCode, loading, globalLoading, babies, currentBaby, showAddBabyForm, newBaby, records, input, isEditing, percentiles, submitRecord, editRecord, cancelEdit, deleteRecord, showModal, currentRecord, regenerateReport, openReport, handleLogin, handleRegister, handleVerifyOtp, sendResetCode, signOut, createBaby, selectBaby, calculateAge, lang, t, toggleLang, hasHeadData, changeStandard, standard, calcPercentiles, renderMarkdown, todayDate, activeChart, nextTick, renderCharts };
             }
         }).mount('#app');
     </script>
