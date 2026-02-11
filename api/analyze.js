@@ -1,102 +1,91 @@
 // api/analyze.js
 export const config = {
-  runtime: 'edge',
+  runtime: 'edge', // 使用 Edge 模式，速度更快
 };
 
 export default async function handler(req) {
   try {
+    // 1. 获取前端传来的数据
     const { days, weight, height, head, gender, name, lang } = await req.json();
-    const isEnglish = lang === 'en';
 
-    // 🌟 核心修改：中英文指令完全对齐
-    const systemInstruction = isEnglish 
+    // 🔴🔴🔴 关键修复：请在这里直接填入您的 API Key 🔴🔴🔴
+    // 把引号里的内容换成您真实的密钥 (sk-or-v1-xxxx...)
+    // 如果您已经配置了 Vercel 环境变量，可以改回 process.env.AI_API_KEY
+    const API_KEY = "sk-nxqwldyuuddcdtuooxrzijjtwzvpgyyqdenfibwdwrsljxqd"; 
+
+    // 检查是否填了 Key，没填就报错
+    if (!API_KEY || API_KEY.includes('在这里粘贴')) {
+      throw new Error('API Key is missing. Please edit api/analyze.js to add your key.');
+    }
+
+    // 2. 设定中英文模式 (使用 V5.1 的优化版 Prompt，确保格式对齐)
+    const isEnglish = lang === 'en';
+    
+    const systemPrompt = isEnglish 
       ? `You are an empathetic, professional AI Pediatrician named "BabyUp Expert". 
-         Target Audience: Anxious parents.
          Tone: Warm, encouraging, yet scientifically accurate (based on WHO standards).
          
-         FORMATTING RULES:
+         FORMATTING RULES (Strict):
          1. Use standard Markdown.
-         2. Use **Bold** for key data and conclusions (e.g., **P50**, **Normal**).
-         3. Use bullet points for lists.
-         4. Do NOT use plain text blocks; separate ideas with line breaks.` 
+         2. Use **Bold** for key status (e.g., **Normal**, **High**).
+         3. Structure the report exactly with these 3 headings:
+            ### 1. Growth Assessment 📊
+            ### 2. What to Expect Next 🚀
+            ### 3. Expert Advice for this Month 💡
+         4. Do NOT output plain text blocks; use bullet points.` 
       : `你是一位专业且温暖的 AI 儿科医生，名字叫“BabyUp 专家”。
-         目标听众：关切宝宝成长的家长。
          基调：温暖、令人放心，同时基于 WHO 标准保持科学严谨。
          
-         排版规则：
+         排版规则 (严格执行)：
          1. 必须使用标准 Markdown 语法。
-         2. 关键数据和结论必须使用 **加粗**（例如：**P50**，**完全达标**）。
-         3. 使用列表项（Bullet points）展示细节。
-         4. 段落之间要留空行，保持排版呼吸感。`;
+         2. 关键结论必须使用 **加粗**（例如：**完全达标**）。
+         3. 请严格按照以下 3 个标题输出：
+            ### 1. 生长现状评估 📊
+            ### 2. 未来趋势预测 🚀
+            ### 3. 本月龄专属建议 💡
+         4. 必须使用列表项展示细节，禁止大段纯文本。`;
 
     const userPrompt = isEnglish
-      ? `Baby Profile: Name: ${name}, Gender: ${gender}, Age: ${days} days old.
-         Measurements: Weight: ${weight}kg, Height: ${height}cm, Head Circumference: ${head ? head + 'cm' : 'N/A'}.
+      ? `Baby: ${name}, ${gender}, ${days} days old. Data: Weight ${weight}kg, Height ${height}cm, Head ${head || 'N/A'}. Analyze based on WHO standards.`
+      : `宝宝：${name}，${gender}，${days}天大。数据：体重${weight}kg，身高${height}cm，头围${head || '无'}。请基于WHO标准进行评估。`;
 
-         Please generate a structured report exactly in this order:
-         
-         ### 1. Growth Assessment 📊
-         * Analyze Weight, Height, and Head Circumference separately based on WHO percentiles.
-         * Explicitly state if the baby is in the **Average**, **High**, or **Low** range.
-         * Give a summary sentence: "Overall, ${name} is growing..."
-
-         ### 2. What to Expect Next 🚀
-         * Predict growth trends for the next month.
-         * Mention 1-2 developmental milestones to look out for.
-
-         ### 3. Expert Advice for this Month 💡
-         * Provide 2-3 specific tips on nutrition, sleep, or play tailored to a ${days}-day-old baby.`
-
-      : `宝宝档案：名字：${name}，性别：${gender}，月龄：${days}天。
-         数据：体重：${weight}kg，身高：${height}cm，头围：${head ? head + 'cm' : '无'}。
-
-         请严格按照以下结构生成报告：
-
-         ### 1. 生长现状评估 📊
-         * 基于 WHO 百分位，分别点评体重、身高、头围。
-         * 明确指出宝宝处于 **中等**、**偏高** 还是 **偏低** 区间。
-         * 给出一句总结：“总体来看，${name} 的生长...”
-
-         ### 2. 未来趋势预测 🚀
-         * 预测下一个月的生长速度。
-         * 提醒家长关注 1-2 个即将到来的发育里程碑。
-
-         ### 3. 本月龄专属建议 💡
-         * 针对 ${days} 天大的宝宝，提供 2-3 条关于喂养、睡眠或大运动的具体建议。`;
-
-    // 调用 AI (请确保这里填的是您真实的 API Key)
+    // 3. 发送请求给 AI (OpenRouter)
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.AI_API_KEY}`,
+        'Authorization': `Bearer ${API_KEY}`, // 这里会自动使用上面定义的 Key
         'HTTP-Referer': 'https://babyup.app',
         'X-Title': 'BabyUp',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-001', // 推荐使用 Gemini 或 GPT-4o-mini
+        model: 'google/gemini-2.0-flash-001', // 或者 'deepseek/deepseek-chat'
         messages: [
-          { role: 'system', content: systemInstruction },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.7,
+        temperature: 0.7, // 温度设为 0.7，既有创造力又不太飘
       }),
     });
 
-    const data = await response.json();
-    
+    // 4. 处理 API 返回的错误 (比如 Key 不对，或者余额不足)
     if (!response.ok) {
-      throw new Error(data.error?.message || 'AI API Error');
+      const errorData = await response.json();
+      console.error('AI API Error Details:', errorData);
+      throw new Error(`AI Service Error: ${response.status}`);
     }
 
-    const aiText = data.choices?.[0]?.message?.content || (isEnglish ? "Generating report..." : "正在生成报告...");
-    
+    const data = await response.json();
+    const aiText = data.choices?.[0]?.message?.content || (isEnglish ? "Report generation failed." : "报告生成失败。");
+
+    // 5. 返回成功结果
     return new Response(JSON.stringify({ result: aiText }), {
       headers: { 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('API Error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to generate report' }), { status: 500 });
+    console.error('Handler Error:', error);
+    // 返回一个 JSON 错误，防止前端白屏
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 }
