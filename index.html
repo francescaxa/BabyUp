@@ -86,7 +86,7 @@
                         <button @click="authMode = 'login'" class="w-full text-sm text-slate-400">{{ t.back_login }}</button>
                     </div>
                     
-                    <div v-if="authMode === 'forgot'">
+                     <div v-if="authMode === 'forgot'">
                         <h3 class="text-lg font-bold text-slate-800 mb-4">{{ t.reset_title }}</h3>
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-2">{{ t.email_label }}</label>
                         <input type="email" v-model="email" class="input-glass w-full rounded-xl p-3 mb-6 font-bold">
@@ -159,9 +159,9 @@
                                 <div class="grid grid-cols-1 gap-4">
                                     <input type="date" :min="currentBaby.birth_date" :max="todayDate" :lang="lang === 'en' ? 'en-US' : 'zh-CN'" :key="lang" v-model="input.date" class="input-glass rounded-xl p-3 text-sm font-bold text-slate-600">
                                     
-                                    <div class="relative"><input type="number" v-model="input.weight" :placeholder="t.weight_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded">{{ percentiles.weight }}</span></div>
-                                    <div class="relative"><input type="number" v-model="input.height" :placeholder="t.height_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-teal-500 bg-teal-50 px-2 py-1 rounded">{{ percentiles.height }}</span></div>
-                                    <div class="relative"><input type="number" v-model="input.head" :placeholder="t.head_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-purple-500 bg-purple-50 px-2 py-1 rounded">{{ percentiles.head }}</span></div>
+                                    <div class="relative"><input type="number" step="0.01" v-model="input.weight" :placeholder="t.weight_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded">{{ percentiles.weight }}</span></div>
+                                    <div class="relative"><input type="number" step="0.01" v-model="input.height" :placeholder="t.height_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-teal-500 bg-teal-50 px-2 py-1 rounded">{{ percentiles.height }}</span></div>
+                                    <div class="relative"><input type="number" step="0.01" v-model="input.head" :placeholder="t.head_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-purple-500 bg-purple-50 px-2 py-1 rounded">{{ percentiles.head }}</span></div>
                                 </div>
                                 <button @click="submitRecord" :disabled="loading" class="btn-brand w-full text-white font-bold py-3 rounded-xl mt-4 shadow-lg flex justify-center items-center gap-2 transform active:scale-95 transition">
                                     <span v-if="loading" class="animate-spin">⏳</span><span>{{ t.gen_report }}</span>
@@ -287,7 +287,7 @@
                 const activeChart = ref('weight');
                 const todayDate = new Date().toISOString().split('T')[0];
 
-                // 🚀 V7.0 新增: 密码重置状态
+                // V7.0 新增: 密码重置状态
                 const showResetPasswordModal = ref(false);
                 const newPassword = ref('');
 
@@ -307,20 +307,6 @@
                             male: { p3: [31.9,34.8,36.7,38.1,39.3,40.3,41.2,42.0,42.7,43.3,43.9,44.5,45.0], p50: [34.5,37.3,39.1,40.5,41.6,42.6,43.5,44.2,44.8,45.4,46.0,46.5,47.0], p97: [37.2,39.8,41.5,42.9,44.0,45.0,45.8,46.5,47.1,47.6,48.2,48.7,49.2] },
                             female: { p3: [31.5,34.2,36.0,37.3,38.4,39.4,40.3,41.0,41.7,42.3,42.9,43.4,43.9], p50: [33.9,36.5,38.3,39.5,40.6,41.5,42.2,42.8,43.4,44.0,44.6,45.1,45.6], p97: [36.2,39.0,40.6,41.9,43.0,43.9,44.6,45.3,45.9,46.4,46.9,47.4,47.9] }
                         }
-                    },
-                    china: {
-                        weight: {
-                            male: { p3: [2.5,3.6,4.6,5.4,6.0,6.5,7.0,7.3,7.6,7.9,8.2,8.4,8.6], p50: [3.4,4.8,6.0,6.9,7.6,8.2,8.7,9.1,9.4,9.7,10.0,10.3,10.5], p97: [4.2,6.1,7.5,8.5,9.3,10.0,10.6,11.1,11.5,11.9,12.3,12.6,12.9] },
-                            female: { p3: [2.5,3.4,4.2,4.9,5.5,6.0,6.4,6.7,7.0,7.3,7.5,7.7,7.9], p50: [3.3,4.5,5.5,6.4,7.0,7.6,8.1,8.5,8.8,9.1,9.4,9.7,9.9], p97: [4.1,5.7,7.0,8.0,8.8,9.5,10.0,10.5,10.9,11.3,11.7,12.0,12.3] }
-                        },
-                        height: {
-                            male: { p3: [46.7,51.8,55.5,58.5,61.0,63.1,65.0,66.6,68.0,69.5,70.8,72.0,73.3], p50: [50.4,55.8,59.6,62.5,65.1,67.3,69.3,71.0,72.5,74.0,75.3,76.6,78.0], p97: [54.0,59.8,63.7,66.6,69.1,71.3,73.3,75.1,76.8,78.4,79.9,81.3,82.7] },
-                            female: { p3: [46.0,50.8,54.4,57.3,59.7,61.9,63.8,65.4,66.8,68.2,69.6,70.8,72.0], p50: [49.7,54.7,58.4,61.3,63.9,66.1,68.0,69.7,71.2,72.7,74.0,75.3,76.7], p97: [53.2,58.6,62.4,65.4,68.0,70.3,72.2,73.9,75.6,77.1,78.6,80.0,81.4] }
-                        },
-                        head: {
-                            male: { p3: [32.1,35.0,36.8,38.1,39.1,40.1,40.9,41.6,42.2,42.8,43.3,43.8,44.3], p50: [34.8,37.8,39.6,40.9,42.0,43.0,43.8,44.5,45.1,45.7,46.2,46.7,47.2], p97: [37.3,40.5,42.3,43.7,44.8,45.8,46.7,47.4,48.0,48.6,49.1,49.6,50.1] },
-                            female: { p3: [31.5,34.3,36.0,37.3,38.4,39.3,40.1,40.8,41.4,41.9,42.4,42.9,43.4], p50: [34.1,37.0,38.8,40.1,41.2,42.1,42.9,43.6,44.2,44.8,45.3,45.8,46.3], p97: [36.6,39.7,41.5,42.8,44.0,45.0,45.8,46.5,47.1,47.7,48.2,48.7,49.2] }
-                        }
                     }
                 };
 
@@ -332,7 +318,6 @@
                 async function sendResetCode() { if(!email.value) return; loading.value=true; const {error}=await supabase.auth.resetPasswordForEmail(email.value, { redirectTo: window.location.href }); loading.value=false; if(error)alert(error.message);else alert(t.value.sending); }
                 async function signOut() { await supabase.auth.signOut(); user.value=null; babies.value=[]; currentBaby.value=null; authMode.value='login'; }
                 
-                // 🚀 V7.0 新增: 更新密码逻辑
                 async function updatePassword() { if(newPassword.value.length<6) return alert('Min 6 chars'); loading.value=true; const {error} = await supabase.auth.updateUser({password: newPassword.value}); loading.value=false; if(error) alert(error.message); else { alert('Success!'); showResetPasswordModal.value=false; newPassword.value=''; } }
 
                 async function fetchBabies() { const {data}=await supabase.from('babies').select('*').order('created_at',{ascending:false}); babies.value=data||[]; }
@@ -365,7 +350,7 @@
                     const recordDate = new Date(input.value.date);
                     const birthDate = new Date(currentBaby.value.birth_date);
                     
-                    // 🚀 V7.0 严防死守: 彻底拦截出生前的日期，不再依赖前端 min 属性
+                    // V7.0 严防死守
                     if(recordDate < birthDate) return alert(t.value.date_too_early);
                     if(recordDate > new Date()) return alert('No future date');
                     
@@ -389,6 +374,7 @@
 
                         if(aiReport) payload.ai_report = aiReport;
 
+                        // 关键修复：确保 Update 能执行成功 (配合 RLS)
                         if (isEditing.value) {
                             const {error} = await supabase.from('records').update(payload).eq('id', editingId.value);
                             if(error) throw error;
@@ -471,12 +457,11 @@
                         user.value = session?.user || null;
                         globalLoading.value = false;
 
-                        // 🚀 V7.0 新增: 监听密码重置事件
                         supabase.auth.onAuthStateChange((event, session) => { 
                             user.value = session?.user || null; 
                             if(user.value) fetchBabies();
                             if(event === 'PASSWORD_RECOVERY') {
-                                showResetPasswordModal.value = true; // 拦截！强制改密码
+                                showResetPasswordModal.value = true;
                             }
                         });
 
