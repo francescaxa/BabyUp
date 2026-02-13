@@ -159,9 +159,9 @@
                                 <div class="grid grid-cols-1 gap-4">
                                     <input type="date" :min="currentBaby.birth_date" :max="todayDate" :lang="lang === 'en' ? 'en-US' : 'zh-CN'" :key="lang" v-model="input.date" class="input-glass rounded-xl p-3 text-sm font-bold text-slate-600">
                                     
-                                    <div class="relative"><input type="number" step="0.01" v-model="input.weight" :placeholder="t.weight_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded">{{ percentiles.weight }}</span></div>
-                                    <div class="relative"><input type="number" step="0.01" v-model="input.height" :placeholder="t.height_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-teal-500 bg-teal-50 px-2 py-1 rounded">{{ percentiles.height }}</span></div>
-                                    <div class="relative"><input type="number" step="0.01" v-model="input.head" :placeholder="t.head_ph" @input="calcPercentiles" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-purple-500 bg-purple-50 px-2 py-1 rounded">{{ percentiles.head }}</span></div>
+                                    <div class="relative"><input type="text" inputmode="decimal" v-model="input.weight" :placeholder="t.weight_ph" @input="handleInput('weight')" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-orange-400 bg-orange-50 px-2 py-1 rounded">{{ percentiles.weight }}</span></div>
+                                    <div class="relative"><input type="text" inputmode="decimal" v-model="input.height" :placeholder="t.height_ph" @input="handleInput('height')" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-teal-500 bg-teal-50 px-2 py-1 rounded">{{ percentiles.height }}</span></div>
+                                    <div class="relative"><input type="text" inputmode="decimal" v-model="input.head" :placeholder="t.head_ph" @input="handleInput('head')" class="input-glass w-full rounded-xl p-3 text-sm pr-16 font-bold"><span class="absolute right-3 top-3 text-xs font-bold text-purple-500 bg-purple-50 px-2 py-1 rounded">{{ percentiles.head }}</span></div>
                                 </div>
                                 <button @click="submitRecord" :disabled="loading" class="btn-brand w-full text-white font-bold py-3 rounded-xl mt-4 shadow-lg flex justify-center items-center gap-2 transform active:scale-95 transition">
                                     <span v-if="loading" class="animate-spin">⏳</span><span>{{ t.gen_report }}</span>
@@ -325,6 +325,11 @@
                 function selectBaby(baby) { currentBaby.value=baby; fetchRecords(baby.id); }
                 async function fetchRecords(babyId) { const {data}=await supabase.from('records').select('*').eq('baby_id',babyId).order('date',{ascending:false}); records.value=data||[]; nextTick(()=>{calcPercentiles(); renderCharts();}); }
 
+                // 🚀 V8.0: 简单的输入处理，允许输入任意字符，由浏览器控制软键盘
+                function handleInput(field) {
+                    calcPercentiles();
+                }
+
                 function calcPercentiles() {
                     if (!currentBaby.value) return;
                     const birth = new Date(currentBaby.value.birth_date);
@@ -332,9 +337,10 @@
                     const month = Math.max(0, Math.min(Math.floor((now - birth)/(1000*60*60*24*30)), 12)); 
                     const gender = currentBaby.value.gender;
                     const getPct = (type, val) => {
-                        if (!val) return '';
+                        const numVal = parseFloat(val); // 即使是字符串也能解析
+                        if (!numVal) return '';
                         const p50 = growthData[standard.value][type][gender].p50[month];
-                        const diff = ((val - p50) / p50) * 100;
+                        const diff = ((numVal - p50) / p50) * 100;
                         if (Math.abs(diff) < 5) return 'P50'; if (diff > 20) return '>P97'; if (diff > 10) return 'P85'; if (diff < -20) return '<P3'; if (diff < -10) return 'P15'; return 'Normal';
                     };
                     percentiles.value.weight = getPct('weight', input.value.weight);
@@ -343,6 +349,7 @@
                 }
 
                 async function submitRecord() {
+                    // 🚀 V8.0: 提交前强制转换数字
                     const w=parseFloat(input.value.weight); const h=parseFloat(input.value.height);
                     if(!w||!h) return alert('Input required');
                     if(w<1||w>50) return alert('Invalid weight'); if(h<20||h>150) return alert('Invalid height');
@@ -350,13 +357,14 @@
                     const recordDate = new Date(input.value.date);
                     const birthDate = new Date(currentBaby.value.birth_date);
                     
-                    // V7.0 严防死守
                     if(recordDate < birthDate) return alert(t.value.date_too_early);
                     if(recordDate > new Date()) return alert('No future date');
                     
                     loading.value=true;
                     const days=Math.ceil((recordDate - birthDate)/86400000);
-                    const payload={baby_id:currentBaby.value.id,date:input.value.date,days,weight:w,height:h,head:input.value.head||null};
+                    // head 也要处理
+                    const headVal = input.value.head ? parseFloat(input.value.head) : null;
+                    const payload={baby_id:currentBaby.value.id,date:input.value.date,days,weight:w,height:h,head:headVal};
 
                     try {
                         let aiReport = null;
@@ -374,7 +382,6 @@
 
                         if(aiReport) payload.ai_report = aiReport;
 
-                        // 关键修复：确保 Update 能执行成功 (配合 RLS)
                         if (isEditing.value) {
                             const {error} = await supabase.from('records').update(payload).eq('id', editingId.value);
                             if(error) throw error;
@@ -417,9 +424,27 @@
                     } 
                 }
 
-                function editRecord(record) { isEditing.value=true; editingId.value=record.id; input.value={...record}; window.scrollTo({top:0,behavior:'smooth'}); calcPercentiles(); }
+                function editRecord(record) { 
+                    isEditing.value=true; 
+                    editingId.value=record.id; 
+                    // 🚀 V8.0: 确保回填到输入框的是字符串，防止数字类型绑定冲突
+                    input.value={ ...record, weight: String(record.weight), height: String(record.height), head: record.head ? String(record.head) : '' }; 
+                    window.scrollTo({top:0,behavior:'smooth'}); 
+                    calcPercentiles(); 
+                }
+                
                 function cancelEdit() { isEditing.value=false; editingId.value=null; input.value={date:new Date().toISOString().split('T')[0],weight:'',height:'',head:''}; percentiles.value={weight:'',height:'',head:''}; }
-                async function deleteRecord(id) { if(confirm('Delete record?')) { await supabase.from('records').delete().eq('id',id); fetchRecords(currentBaby.value.id); } }
+                async function deleteRecord(id) { 
+                    if(confirm('Delete record?')) { 
+                        const { error } = await supabase.from('records').delete().eq('id',id); 
+                        if(error) alert('Delete failed: ' + error.message);
+                        else {
+                            // 🚀 V8.0: 给个删除成功的提示
+                            // alert('Deleted successfully');
+                            fetchRecords(currentBaby.value.id); 
+                        }
+                    } 
+                }
                 function openReport(record) { currentRecord.value=record; showModal.value=true; }
                 function calculateAge(d) { return Math.ceil((new Date()-new Date(d))/86400000)+' '+t.value.days_old; }
                 function renderMarkdown(text) { return marked.parse(text||''); }
@@ -472,7 +497,7 @@
                     }
                 });
 
-                return { user, authMode, email, password, otpToken, sentCode, loading, globalLoading, babies, currentBaby, showAddBabyForm, newBaby, records, input, isEditing, percentiles, submitRecord, editRecord, cancelEdit, deleteRecord, showModal, currentRecord, regenerateReport, openReport, handleLogin, handleRegister, handleVerifyOtp, sendResetCode, signOut, createBaby, selectBaby, calculateAge, lang, t, toggleLang, changeStandard, standard, calcPercentiles, renderMarkdown, todayDate, activeChart, nextTick, renderCharts, showResetPasswordModal, newPassword, updatePassword };
+                return { user, authMode, email, password, otpToken, sentCode, loading, globalLoading, babies, currentBaby, showAddBabyForm, newBaby, records, input, isEditing, percentiles, submitRecord, editRecord, cancelEdit, deleteRecord, showModal, currentRecord, regenerateReport, openReport, handleLogin, handleRegister, handleVerifyOtp, sendResetCode, signOut, createBaby, selectBaby, calculateAge, lang, t, toggleLang, changeStandard, standard, calcPercentiles, renderMarkdown, todayDate, activeChart, nextTick, renderCharts, showResetPasswordModal, newPassword, updatePassword, handleInput };
             }
         }).mount('#app');
     </script>
