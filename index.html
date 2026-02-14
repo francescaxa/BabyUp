@@ -9,7 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         body { background: linear-gradient(135deg, #FFF0F5 0%, #E0F7FA 100%); font-family: 'Nunito', sans-serif; -webkit-tap-highlight-color: transparent; }
         .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08); }
@@ -33,10 +34,14 @@
         
         .reference-section { @apply mt-6 border-t border-slate-100 pt-4; }
         .ref-group { @apply mb-3; }
-        /* 🚀 V9.4: 加上 font-sans 和 font-black，让标题变得非常硬朗 */
-        .ref-title { @apply text-[10px] font-black text-slate-500 mb-1 flex items-center gap-1 font-sans uppercase tracking-wide; } 
-        .ref-content { @apply text-[9px] text-slate-400/80 leading-relaxed font-sans text-justify tracking-wide; }
-        .source-tag { @apply inline-block px-1.5 py-0.5 rounded-[3px] bg-slate-100 text-slate-500 font-bold mr-1.5 text-[8px] tracking-wider; }
+        
+        /* 🚀 V10.0: 纯黑(text-slate-900) + 最粗(font-black)，绝对醒目 */
+        .ref-title { @apply text-[11px] font-black text-slate-900 mb-1 flex items-center gap-1 font-sans uppercase tracking-wide; } 
+        .ref-content { @apply text-[9px] text-slate-500 leading-relaxed font-sans text-justify tracking-wide; }
+        .source-tag { @apply inline-block px-1.5 py-0.5 rounded-[3px] bg-slate-100 text-slate-600 font-bold mr-1.5 text-[8px] tracking-wider; }
+
+        /* 长图生成时的专用样式 */
+        #share-capture-area { position: fixed; top: -9999px; left: -9999px; width: 375px; background: #fff; z-index: -1; }
     </style>
     <script>
         window.onerror = function(msg, url, line) {
@@ -228,7 +233,7 @@
                                             <span class="text-xs">📝</span> {{ t.notes_title }}
                                         </h4>
                                         <p class="ref-content">
-                                            <span class="font-bold text-slate-400/90">{{ standard === 'who' ? 'WHO (2006)' : 'China (2022)' }}: </span>
+                                            <span class="font-bold text-slate-700">{{ standard === 'who' ? 'WHO (2006)' : 'China (2022)' }}: </span>
                                             {{ standard === 'who' ? t.notes_who : t.notes_china }}
                                         </p>
                                     </div>
@@ -263,15 +268,52 @@
                             <div class="text-6xl mb-4 text-slate-200">📄</div>
                             <p class="text-slate-400 font-bold">{{ t.no_report_yet }}</p>
                         </div>
-                        <div v-if="currentRecord" class="mt-8 pt-6 border-t border-slate-200 text-center">
+                        
+                        <div v-if="currentRecord" class="mt-8 pt-6 border-t border-slate-200 flex flex-col items-center gap-3">
+                            <button @click="generateShareImage" :disabled="loading" class="bg-gradient-to-r from-yellow-300 to-orange-400 text-white font-black py-3 px-8 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition flex items-center gap-2 text-sm uppercase tracking-wider">
+                                <span>🎁</span> {{ t.share_btn }}
+                            </button>
                             <p class="text-xs text-slate-400 mb-2">{{ t.outdated_hint }}</p>
-                            <button @click="regenerateReport(currentRecord)" :disabled="loading" class="bg-white border-2 border-orange-200 text-orange-500 font-bold py-2 px-6 rounded-full hover:bg-orange-50 transition shadow-sm">{{ loading ? t.ai_thinking : t.regenerate }} 🤖</button>
+                            <button @click="regenerateReport(currentRecord)" :disabled="loading" class="text-xs text-orange-400 font-bold underline hover:text-orange-500 transition">{{ t.regenerate }}</button>
                         </div>
                     </div>
                     <div class="p-4 bg-white border-t border-slate-100 shrink-0"><button @click="showModal = false" class="w-full bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200 transition">{{ t.close }}</button></div>
                 </div>
             </div>
         </transition>
+
+        <div id="share-capture-area" class="p-8 flex flex-col gap-6">
+            <div class="text-center">
+                <h1 class="text-4xl font-extrabold text-orange-500 tracking-tight">BabyUp</h1>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Smart Growth Assistant</p>
+            </div>
+            
+            <div class="bg-orange-50 p-4 rounded-2xl flex items-center gap-4">
+                <div class="text-4xl">{{ currentBaby?.gender === 'male' ? '👦' : '👧' }}</div>
+                <div>
+                    <h2 class="text-xl font-black text-slate-800">{{ currentBaby?.name }}</h2>
+                    <p class="text-sm text-slate-500 font-bold">{{ currentRecord?.date }} · Day {{ currentRecord?.days }}</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="relative h-[200px] w-full bg-white rounded-xl border border-slate-100 p-2">
+                    <canvas id="shareChartWeight"></canvas>
+                </div>
+                <div class="relative h-[200px] w-full bg-white rounded-xl border border-slate-100 p-2">
+                    <canvas id="shareChartHeight"></canvas>
+                </div>
+                <div class="relative h-[200px] w-full bg-white rounded-xl border border-slate-100 p-2" v-if="currentRecord?.head">
+                    <canvas id="shareChartHead"></canvas>
+                </div>
+            </div>
+
+            <div class="report-content text-sm" v-if="currentRecord?.ai_report" v-html="renderMarkdown(currentRecord.ai_report)"></div>
+
+            <div class="text-center pt-4 border-t border-slate-100">
+                <p class="text-xs font-bold text-slate-300">Copyright © BabyUp</p>
+            </div>
+        </div>
 
         <transition name="fade">
             <div v-if="showResetPasswordModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
@@ -290,21 +332,13 @@
         const { createApp, ref, onMounted, watch, computed, nextTick } = Vue;
 
         const i18n = {
-            zh: { slogan: "您的 AI 育儿专家", login_tab: "登录", register_tab: "注册", login_btn: "安全登录", register_btn: "立即注册", forgot_password: "忘记密码?", reset_title: "重置密码", verify_title: "验证您的邮箱", send_reset_code: "发送密码重置链接", back_login: "返回登录", confirm_btn: "确认验证", set_password: "设置密码 (至少6位)", password_label: "密码", email_label: "邮箱地址", sending: "发送中...", send_btn: "获取验证码", code_sent_to: "验证码已发送至", code_label: "6 位数字验证码", verifying: "验证中...", login_confirm: "进入 BabyUp", back_email: "修改邮箱", my_babies: "宝宝列表", logout: "退出", no_baby: "欢迎！先添加一个宝宝档案吧", add_baby: "添加宝宝", add_another: "添加二宝/三宝", back: "返回", new_profile: "新宝宝档案", nickname: "宝宝小名", gender: "性别", boy: "👦 男宝", girl: "👧 女宝", birth_date: "出生日期", saving: "保存中...", create_btn: "创建档案", switch_baby: "切换", days_old: "天大", record_entry: "📝 今日成长记录", edit_mode: "✏️ 编辑记录 (修改后重新生成报告)", update_btn: "保存并生成报告", weight_ph: "体重 (kg)", height_ph: "身高 (cm)", head_ph: "头围 (cm, 选填)", ai_thinking: "AI 专家思考中...", gen_report: "生成 AI 成长解读 ✨", chart_title: "生长曲线", realtime: "实时", history_title: "📅 历史档案", view_report_btn: "📄 查看报告", gen_report_btn: "✨ 生成报告", report_title: "AI 深度解读", close: "关闭", connecting: "正在连接 BabyUp 云端...", edit: "编辑", del: "删除", no_report_yet: "暂无 AI 报告", outdated_hint: "数据更新后，可重新解读", regenerate: "重新生成报告", logging_in: "登录中...", weight_tab: "体重", height_tab: "身高", head_tab: "头围", date_too_early: "日期无效：不能早于宝宝出生日期！", reset_modal_title: "🔒 设置新密码", reset_modal_desc: "请输入您的新密码以恢复访问权限", reset_confirm_btn: "更新密码",
-                notes_title: "备注",
-                refs_title: "参考文献",
-                notes_who: "基于WHO多中心生长参考研究(MGRS)。用于评估0-60个月儿童的生长发育状况。",
-                refs_who: "WHO Multicentre Growth Reference Study Group. WHO Child Growth Standards[S]. Geneva: World Health Organization, 2006.",
-                notes_china: "根据国家卫生健康委发布的最新卫生行业标准。2023年3月1日起施行，替代2009年旧版标准。",
-                refs_china: "中华人民共和国国家卫生健康委员会. WS/T 423—2022 7岁以下儿童生长标准[S]. 北京: 中国标准出版社, 2022."
+            zh: { slogan: "您的 AI 育儿专家", login_tab: "登录", register_tab: "注册", login_btn: "安全登录", register_btn: "立即注册", forgot_password: "忘记密码?", reset_title: "重置密码", verify_title: "验证您的邮箱", send_reset_code: "发送密码重置链接", back_login: "返回登录", confirm_btn: "确认验证", set_password: "设置密码 (至少6位)", password_label: "密码", email_label: "邮箱地址", sending: "发送中...", send_btn: "获取验证码", code_sent_to: "验证码已发送至", code_label: "6 位数字验证码", verifying: "验证中...", login_confirm: "进入 BabyUp", back_email: "修改邮箱", my_babies: "宝宝列表", logout: "退出", no_baby: "欢迎！先添加一个宝宝档案吧", add_baby: "添加宝宝", add_another: "添加二宝/三宝", back: "返回", new_profile: "新宝宝档案", nickname: "宝宝小名", gender: "性别", boy: "👦 男宝", girl: "👧 女宝", birth_date: "出生日期", saving: "保存中...", create_btn: "创建档案", switch_baby: "切换", days_old: "天大", record_entry: "📝 今日成长记录", edit_mode: "✏️ 编辑记录 (修改后重新生成报告)", update_btn: "保存并生成报告", weight_ph: "体重 (kg)", height_ph: "身高 (cm)", head_ph: "头围 (cm, 选填)", ai_thinking: "AI 专家思考中...", gen_report: "生成 AI 成长解读 ✨", chart_title: "生长曲线", realtime: "实时", history_title: "📅 历史档案", view_report_btn: "📄 查看报告", gen_report_btn: "✨ 生成报告", report_title: "AI 深度解读", close: "关闭", connecting: "正在连接 BabyUp 云端...", edit: "编辑", del: "删除", no_report_yet: "暂无 AI 报告", outdated_hint: "数据更新后，可重新解读", regenerate: "重新生成报告", logging_in: "登录中...", weight_tab: "体重", height_tab: "身高", head_tab: "头围", date_too_early: "日期无效：不能早于宝宝出生日期！", reset_modal_title: "🔒 设置新密码", reset_modal_desc: "请输入您的新密码以恢复访问权限", reset_confirm_btn: "更新密码", notes_title: "备注", refs_title: "参考文献", notes_who: "基于WHO多中心生长参考研究(MGRS)。用于评估0-60个月儿童的生长发育状况。", refs_who: "WHO Multicentre Growth Reference Study Group. WHO Child Growth Standards[S]. Geneva: World Health Organization, 2006.", notes_china: "根据国家卫生健康委发布的最新卫生行业标准。2023年3月1日起施行，替代2009年旧版标准。", refs_china: "中华人民共和国国家卫生健康委员会. WS/T 423—2022 7岁以下儿童生长标准[S]. 北京: 中国标准出版社, 2022.",
+                // 🚀 V10.0 新增
+                share_btn: "生成成长海报 (长图)", generating: "正在绘制..."
             },
-            en: { slogan: "Your AI Parenting Expert", login_tab: "Login", register_tab: "Register", login_btn: "Secure Login", register_btn: "Sign Up Now", forgot_password: "Forgot Password?", reset_title: "Reset Password", verify_title: "Verify Your Email", send_reset_code: "Send Password Reset Link", back_login: "Back to Login", confirm_btn: "Confirm Verify", set_password: "Set Password (min 6 chars)", password_label: "Password", email_label: "Email Address", sending: "Sending...", send_btn: "Get Code", code_sent_to: "Code sent to", code_label: "6-Digit Code", verifying: "Verifying...", login_confirm: "Enter BabyUp", back_email: "Change Email", my_babies: "My Babies", logout: "Logout", no_baby: "Welcome! Add a baby profile first", add_baby: "Add Baby", add_another: "Add Another Baby", back: "Back", new_profile: "New Profile", nickname: "Nickname", gender: "Gender", boy: "👦 Boy", girl: "👧 Girl", birth_date: "Birth Date", saving: "Saving...", create_btn: "Create Profile", switch_baby: "Switch", days_old: "days old", record_entry: "📝 Data Entry", edit_mode: "✏️ Edit Record", update_btn: "Save & Generate Report", weight_ph: "Weight (kg)", height_ph: "Height (cm)", head_ph: "Head Circ. (cm, optional)", ai_thinking: "AI Thinking...", gen_report: "Generate AI Report ✨", chart_title: "Growth Charts", realtime: "Live", history_title: "📅 History", view_report_btn: "📄 View Report", gen_report_btn: "✨ AI Report", report_title: "AI Insight", close: "Close", connecting: "Connecting to BabyUp...", edit: "Edit", del: "Del", no_report_yet: "No Report", outdated_hint: "Data changed? Regenerate report.", regenerate: "Regenerate Report", logging_in: "Logging in...", weight_tab: "Weight", height_tab: "Height", head_tab: "Head", date_too_early: "Invalid Date: Cannot be earlier than birth date!", reset_modal_title: "🔒 Set New Password", reset_modal_desc: "Please enter your new password to regain access", reset_confirm_btn: "Update Password",
-                notes_title: "Notes",
-                refs_title: "References",
-                notes_who: "Based on the WHO Multicentre Growth Reference Study (MGRS). Generates z-scores and percentiles for children 0-5 years.",
-                refs_who: "WHO Multicentre Growth Reference Study Group. WHO Child Growth Standards[S]. Geneva: World Health Organization, 2006.",
-                notes_china: "Based on the latest industry standard issued by the NHC. Implemented on March 1, 2023.",
-                refs_china: "National Health Commission of the PRC. WS/T 423—2022 Growth Standard for Children under 7 Years of Age[S]. Beijing: Standards Press of China, 2022."
+            en: { slogan: "Your AI Parenting Expert", login_tab: "Login", register_tab: "Register", login_btn: "Secure Login", register_btn: "Sign Up Now", forgot_password: "Forgot Password?", reset_title: "Reset Password", verify_title: "Verify Your Email", send_reset_code: "Send Password Reset Link", back_login: "Back to Login", confirm_btn: "Confirm Verify", set_password: "Set Password (min 6 chars)", password_label: "Password", email_label: "Email Address", sending: "Sending...", send_btn: "Get Code", code_sent_to: "Code sent to", code_label: "6-Digit Code", verifying: "Verifying...", login_confirm: "Enter BabyUp", back_email: "Change Email", my_babies: "My Babies", logout: "Logout", no_baby: "Welcome! Add a baby profile first", add_baby: "Add Baby", add_another: "Add Another Baby", back: "Back", new_profile: "New Profile", nickname: "Nickname", gender: "Gender", boy: "👦 Boy", girl: "👧 Girl", birth_date: "Birth Date", saving: "Saving...", create_btn: "Create Profile", switch_baby: "Switch", days_old: "days old", record_entry: "📝 Data Entry", edit_mode: "✏️ Edit Record", update_btn: "Save & Generate Report", weight_ph: "Weight (kg)", height_ph: "Height (cm)", head_ph: "Head Circ. (cm, optional)", ai_thinking: "AI Thinking...", gen_report: "Generate AI Report ✨", chart_title: "Growth Charts", realtime: "Live", history_title: "📅 History", view_report_btn: "📄 View Report", gen_report_btn: "✨ AI Report", report_title: "AI Insight", close: "Close", connecting: "Connecting to BabyUp...", edit: "Edit", del: "Del", no_report_yet: "No Report", outdated_hint: "Data changed? Regenerate report.", regenerate: "Regenerate Report", logging_in: "Logging in...", weight_tab: "Weight", height_tab: "Height", head_tab: "Head", date_too_early: "Invalid Date: Cannot be earlier than birth date!", reset_modal_title: "🔒 Set New Password", reset_modal_desc: "Please enter your new password to regain access", reset_confirm_btn: "Update Password", notes_title: "Notes", refs_title: "References", notes_who: "Based on the WHO Multicentre Growth Reference Study (MGRS). Generates z-scores and percentiles for children 0-5 years.", refs_who: "WHO Multicentre Growth Reference Study Group. WHO Child Growth Standards[S]. Geneva: World Health Organization, 2006.", notes_china: "Based on the latest industry standard issued by the NHC. Implemented on March 1, 2023.", refs_china: "National Health Commission of the PRC. WS/T 423—2022 Growth Standard for Children under 7 Years of Age[S]. Beijing: Standards Press of China, 2022.",
+                // 🚀 V10.0 New
+                share_btn: "Share Growth Poster", generating: "Drawing..."
             }
         };
 
@@ -330,14 +364,7 @@
                 const showResetPasswordModal = ref(false);
                 const newPassword = ref('');
 
-                function changeStandard(s) { 
-                    standard.value = s; 
-                    // 重新计算百分位并重绘图表
-                    nextTick(() => { 
-                        calcPercentiles(); 
-                        renderCharts(); 
-                    }); 
-                }
+                function changeStandard(s) { standard.value = s; nextTick(() => { calcPercentiles(); renderCharts(); }); }
 
                 // V9.0: 医疗数据引擎
                 const growthData = {
@@ -397,7 +424,6 @@
                     const getPct = (type, val) => {
                         const numVal = parseFloat(val);
                         if (!numVal) return '';
-                        // V9.0: 动态读取当前选中的 standard (china/who)
                         const p50 = growthData[standard.value][type][gender].p50[month];
                         const diff = ((numVal - p50) / p50) * 100;
                         if (Math.abs(diff) < 5) return 'P50'; if (diff > 20) return '>P97'; if (diff > 10) return 'P85'; if (diff < -20) return '<P3'; if (diff < -10) return 'P15'; return 'Normal';
@@ -481,6 +507,64 @@
                     } 
                 }
 
+                // 🚀 V10.0: 生成长图的核心逻辑
+                async function generateShareImage() {
+                    loading.value = true;
+                    // 1. 渲染三个隐藏图表
+                    const types = ['weight', 'height'];
+                    if (currentRecord.value.head) types.push('head');
+                    
+                    types.forEach(type => {
+                        const canvas = document.getElementById(`shareChart${type.charAt(0).toUpperCase() + type.slice(1)}`);
+                        if (canvas) {
+                            // 销毁旧图表实例
+                            const existingChart = Chart.getChart(canvas);
+                            if(existingChart) existingChart.destroy();
+
+                            const sorted = [...records.value].sort((a,b) => a.days - b.days);
+                            const labels = sorted.map(r => `Day ${r.days}`);
+                            const gender = currentBaby.value.gender;
+                            const stdData = growthData[standard.value][type][gender];
+                            const getStdPoints = (arr) => sorted.map(r => arr[Math.min(Math.floor(r.days/30), 12)]);
+                            const colors = { weight: '#F472B6', height: '#2DD4BF', head: '#A78BFA' };
+                            
+                            new Chart(canvas, {
+                                type: 'line',
+                                data: {
+                                    labels: labels.length ? labels : ['Birth'],
+                                    datasets: [
+                                        { label: `${currentBaby.value.name} (${t.value[type+'_tab']})`, data: sorted.map(r => r[type]), borderColor: colors[type], backgroundColor: colors[type], borderWidth: 3, pointRadius: 4, tension: 0.3 },
+                                        { label: 'P50', data: getStdPoints(stdData.p50), borderColor: '#94a3b8', borderWidth: 1, borderDash: [5, 5], pointRadius: 0 }
+                                    ]
+                                },
+                                options: { 
+                                    responsive: true, 
+                                    maintainAspectRatio: false, 
+                                    animation: false, // 关键：关闭动画，否则截图时图表是空的
+                                    plugins: { legend: { position: 'top' } } 
+                                }
+                            });
+                        }
+                    });
+
+                    // 2. 等待渲染
+                    await new Promise(r => setTimeout(r, 500));
+
+                    // 3. 截图
+                    const element = document.getElementById('share-capture-area');
+                    try {
+                        const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                        const link = document.createElement('a');
+                        link.download = `BabyUp_${currentBaby.value.name}_Report.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                    } catch (e) {
+                        alert('Generate failed: ' + e.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                }
+
                 function editRecord(record) { 
                     isEditing.value=true; 
                     editingId.value=record.id; 
@@ -512,7 +596,6 @@
                     const gender = currentBaby.value.gender;
                     const type = activeChart.value;
                     
-                    // V9.0: 动态获取当前标准的数据
                     const stdData = growthData[standard.value][type][gender];
                     const getStdPoints = (arr) => sorted.map(r => arr[Math.min(Math.floor(r.days/30), 12)]);
                     const colors = { weight: '#F472B6', height: '#2DD4BF', head: '#A78BFA' };
@@ -554,7 +637,7 @@
                     }
                 });
 
-                return { user, authMode, email, password, otpToken, sentCode, loading, globalLoading, babies, currentBaby, showAddBabyForm, newBaby, records, input, isEditing, percentiles, submitRecord, editRecord, cancelEdit, deleteRecord, showModal, currentRecord, regenerateReport, openReport, handleLogin, handleRegister, handleVerifyOtp, sendResetCode, signOut, createBaby, selectBaby, calculateAge, lang, t, toggleLang, changeStandard, standard, calcPercentiles, renderMarkdown, todayDate, activeChart, nextTick, renderCharts, showResetPasswordModal, newPassword, updatePassword, handleInput };
+                return { user, authMode, email, password, otpToken, sentCode, loading, globalLoading, babies, currentBaby, showAddBabyForm, newBaby, records, input, isEditing, percentiles, submitRecord, editRecord, cancelEdit, deleteRecord, showModal, currentRecord, regenerateReport, openReport, handleLogin, handleRegister, handleVerifyOtp, sendResetCode, signOut, createBaby, selectBaby, calculateAge, lang, t, toggleLang, changeStandard, standard, calcPercentiles, renderMarkdown, todayDate, activeChart, nextTick, renderCharts, showResetPasswordModal, newPassword, updatePassword, handleInput, generateShareImage };
             }
         }).mount('#app');
     </script>
