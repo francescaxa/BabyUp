@@ -48,12 +48,6 @@
         #share-capture-area { position: fixed; top: -9999px; left: -9999px; width: 375px; background: #fff; z-index: -1; }
         .logo-svg text { font-family: 'Nunito', sans-serif; font-weight: 800; }
     </style>
-    <script>
-        window.onerror = function(msg, url, line) {
-            console.error("Global Error:", msg); 
-            return false;
-        };
-    </script>
 </head>
 <body class="text-slate-700 min-h-screen">
     <div id="app" class="max-w-6xl mx-auto min-h-screen relative pb-20">
@@ -66,14 +60,14 @@
         </div>
 
         <transition name="fade">
-            <div v-if="!user" class="p-6 pt-20 flex flex-col items-center justify-center min-h-screen max-w-md mx-auto">
+            <div v-if="!user && !isPasswordResetMode" class="p-6 pt-20 flex flex-col items-center justify-center min-h-screen max-w-md mx-auto">
                 <div class="text-center mb-8">
                     <h1 class="text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-orange-400">BabyUp</h1>
                     <p class="text-slate-400 mt-2 font-bold tracking-wide text-sm uppercase">{{ t.slogan }}</p>
                 </div>
 
                 <div class="glass-card rounded-3xl p-8 w-full shadow-2xl">
-                    <div v-if="authMode !== 'verify'" class="flex mb-6 bg-slate-100 p-1 rounded-xl">
+                    <div v-if="authMode === 'login' || authMode === 'register'" class="flex mb-6 bg-slate-100 p-1 rounded-xl">
                         <button @click="authMode = 'login'" :class="authMode === 'login' ? 'bg-white shadow text-orange-500' : 'text-slate-400'" class="flex-1 py-2 rounded-lg font-bold transition">{{ t.login_tab }}</button>
                         <button @click="authMode = 'register'" :class="authMode === 'register' ? 'bg-white shadow text-orange-500' : 'text-slate-400'" class="flex-1 py-2 rounded-lg font-bold transition">{{ t.register_tab }}</button>
                     </div>
@@ -103,19 +97,27 @@
                         <button @click="authMode = 'login'" class="w-full text-sm text-slate-400">{{ t.back_login }}</button>
                     </div>
                     
-                     <div v-if="authMode === 'forgot'">
+                    <div v-if="authMode === 'forgot'">
                         <h3 class="text-lg font-bold text-slate-800 mb-4">{{ t.reset_title }}</h3>
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-2">{{ t.email_label }}</label>
                         <input type="email" v-model="email" class="input-glass w-full rounded-xl p-3 mb-6 font-bold">
                         <button @click="sendResetCode" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl shadow-lg mb-4">{{ loading ? t.sending : t.send_reset_code }}</button>
                         <button @click="authMode = 'login'" class="w-full text-sm text-slate-400 font-bold">{{ t.back_login }}</button>
                     </div>
+
+                    <div v-if="authMode === 'verify_reset'">
+                        <h3 class="text-center font-bold text-slate-800 text-lg mb-2">{{ t.verify_reset_title }}</h3>
+                        <p class="text-xs text-center text-slate-400 mb-6">{{ t.verify_reset_desc }}<br>{{ email }}</p>
+                        <input type="text" v-model="otpToken" maxlength="6" class="input-glass w-full rounded-xl p-4 outline-none mb-6 text-center text-3xl tracking-[0.5em] font-mono font-bold text-slate-700">
+                        <button @click="handleVerifyResetOtp" :disabled="loading" class="btn-brand w-full text-white font-bold py-4 rounded-xl shadow-lg mb-4">{{ loading ? t.verifying : t.verify_reset_btn }}</button>
+                        <button @click="authMode = 'forgot'" class="w-full text-sm text-slate-400">{{ t.back }}</button>
+                    </div>
                 </div>
             </div>
         </transition>
 
         <transition name="fade">
-            <div v-if="user && isPasswordResetMode" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/95 backdrop-blur-xl p-6">
+            <div v-if="isPasswordResetMode" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/95 backdrop-blur-xl p-6">
                 <div class="text-center mb-8">
                     <h1 class="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-orange-400 mb-2">BabyUp</h1>
                     <p class="text-slate-400 font-bold uppercase tracking-wide">{{ t.secure_reset }}</p>
@@ -158,7 +160,6 @@
                             <button @click.stop="openEditBabyModal(baby)" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition shadow-sm z-10">
                                 ⚙️
                             </button>
-                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400" v-if="false">➜</div>
                         </div>
                         <button @click="showAddBabyForm = true" class="mt-4 w-full py-4 border-2 border-dashed border-slate-300 text-slate-400 rounded-2xl font-bold hover:border-orange-300 hover:text-orange-500 transition hover:bg-orange-50">+ {{ t.add_another }}</button>
                     </div>
@@ -382,13 +383,13 @@
         const { createApp, ref, onMounted, watch, computed, nextTick } = Vue;
 
         const i18n = {
-            zh: { slogan: "您的 AI 育儿专家", login_tab: "登录", register_tab: "注册", login_btn: "安全登录", register_btn: "立即注册", forgot_password: "忘记密码?", reset_title: "重置密码", verify_title: "验证您的邮箱", send_reset_code: "发送密码重置链接", back_login: "返回登录", confirm_btn: "确认验证", set_password: "设置密码 (至少6位)", password_label: "密码", email_label: "邮箱地址", sending: "发送中...", send_btn: "获取验证码", code_sent_to: "验证码已发送至", code_label: "6 位数字验证码", verifying: "验证中...", login_confirm: "进入 BabyUp", back_email: "修改邮箱", my_babies: "宝宝列表", logout: "退出", no_baby: "欢迎！先添加一个宝宝档案吧", add_baby: "添加宝宝", add_another: "添加二宝/三宝", back: "返回", new_profile: "新宝宝档案", nickname: "宝宝小名", gender: "性别", boy: "👦 男宝", girl: "👧 女宝", birth_date: "出生日期", saving: "保存中...", create_btn: "创建档案", switch_baby: "切换", days_old: "天大", record_entry: "📝 今日成长记录", edit_mode: "✏️ 编辑记录 (修改后重新生成报告)", update_btn: "保存并生成报告", weight_ph: "体重 (kg)", height_ph: "身高 (cm)", head_ph: "头围 (cm, 选填)", ai_thinking: "AI 专家思考中...", gen_report: "生成 AI 成长解读 ✨", chart_title: "生长曲线", realtime: "实时", history_title: "📅 历史档案", view_report_btn: "📄 查看报告", gen_report_btn: "✨ 生成报告", report_title: "AI 深度解读", close: "关闭", connecting: "正在连接 BabyUp 云端...", edit: "编辑", del: "删除", no_report_yet: "暂无 AI 报告", outdated_hint: "数据更新后，可重新解读", regenerate: "重新生成报告", logging_in: "登录中...", weight_tab: "体重", height_tab: "身高", head_tab: "头围", date_too_early: "日期无效：不能早于宝宝出生日期！", reset_modal_title: "🔒 设置新密码", reset_modal_desc: "请输入您的新密码以恢复访问权限", reset_confirm_btn: "更新密码", notes_title: "备注", refs_title: "参考文献", notes_who: "基于WHO多中心生长参考研究(MGRS)。用于评估0-60个月儿童的生长发育状况。", refs_who: "WHO Multicentre Growth Reference Study Group. WHO Child Growth Standards[S]. Geneva: World Health Organization, 2006.", notes_china: "根据国家卫生健康委发布的最新卫生行业标准。2023年3月1日起施行，替代2009年旧版标准。", refs_china: "中华人民共和国国家卫生健康委员会. WS/T 423—2022 7岁以下儿童生长标准[S]. 北京: 中国标准出版社, 2022.", share_btn: "生成成长海报 (长图)", generating: "正在绘制...", edit_profile: "编辑宝宝档案", save_changes: "保存修改", delete_profile: "🗑️ 删除此档案", date_warn: "⚠️ 修改生日会自动重算所有历史数据",
-                // 🚀 V11.1
-                secure_reset: "安全重置中心", new_pass_title: "设置新密码", new_pass_desc: "为了您的账户安全，请输入新的登录密码"
+            zh: { slogan: "您的 AI 育儿专家", login_tab: "登录", register_tab: "注册", login_btn: "安全登录", register_btn: "立即注册", forgot_password: "忘记密码?", reset_title: "重置密码", verify_title: "验证您的邮箱", send_reset_code: "发送重置验证码", back_login: "返回登录", confirm_btn: "确认验证", set_password: "设置密码 (至少6位)", password_label: "密码", email_label: "邮箱地址", sending: "发送中...", send_btn: "获取验证码", code_sent_to: "验证码已发送至", code_label: "6 位数字验证码", verifying: "验证中...", login_confirm: "进入 BabyUp", back_email: "修改邮箱", my_babies: "宝宝列表", logout: "退出", no_baby: "欢迎！先添加一个宝宝档案吧", add_baby: "添加宝宝", add_another: "添加二宝/三宝", back: "返回", new_profile: "新宝宝档案", nickname: "宝宝小名", gender: "性别", boy: "👦 男宝", girl: "👧 女宝", birth_date: "出生日期", saving: "保存中...", create_btn: "创建档案", switch_baby: "切换", days_old: "天大", record_entry: "📝 今日成长记录", edit_mode: "✏️ 编辑记录 (修改后重新生成报告)", update_btn: "保存并生成报告", weight_ph: "体重 (kg)", height_ph: "身高 (cm)", head_ph: "头围 (cm, 选填)", ai_thinking: "AI 专家思考中...", gen_report: "生成 AI 成长解读 ✨", chart_title: "生长曲线", realtime: "实时", history_title: "📅 历史档案", view_report_btn: "📄 查看报告", gen_report_btn: "✨ 生成报告", report_title: "AI 深度解读", close: "关闭", connecting: "正在连接 BabyUp 云端...", edit: "编辑", del: "删除", no_report_yet: "暂无 AI 报告", outdated_hint: "数据更新后，可重新解读", regenerate: "重新生成报告", logging_in: "登录中...", weight_tab: "体重", height_tab: "身高", head_tab: "头围", date_too_early: "日期无效：不能早于宝宝出生日期！", notes_title: "备注", refs_title: "参考文献", notes_who: "基于WHO多中心生长参考研究(MGRS)。用于评估0-60个月儿童的生长发育状况。", refs_who: "WHO Multicentre Growth Reference Study Group. WHO Child Growth Standards[S]. Geneva: World Health Organization, 2006.", notes_china: "根据国家卫生健康委发布的最新卫生行业标准。2023年3月1日起施行，替代2009年旧版标准。", refs_china: "中华人民共和国国家卫生健康委员会. WS/T 423—2022 7岁以下儿童生长标准[S]. 北京: 中国标准出版社, 2022.", share_btn: "生成成长海报 (长图)", generating: "正在绘制...", edit_profile: "编辑宝宝档案", save_changes: "保存修改", delete_profile: "🗑️ 删除此档案", date_warn: "⚠️ 修改生日会自动重算所有历史数据",
+                // 🚀 V11.2 新增
+                verify_reset_title: "安全验证", verify_reset_desc: "请输入您收到的 6 位重置验证码", verify_reset_btn: "验证此代码", secure_reset: "安全重置中心", new_pass_title: "设置新密码", new_pass_desc: "为了您的账户安全，请输入新的登录密码", reset_confirm_btn: "确认修改并进入"
             },
-            en: { slogan: "Your AI Parenting Expert", login_tab: "Login", register_tab: "Register", login_btn: "Secure Login", register_btn: "Sign Up Now", forgot_password: "Forgot Password?", reset_title: "Reset Password", verify_title: "Verify Your Email", send_reset_code: "Send Password Reset Link", back_login: "Back to Login", confirm_btn: "Confirm Verify", set_password: "Set Password (min 6 chars)", password_label: "Password", email_label: "Email Address", sending: "Sending...", send_btn: "Get Code", code_sent_to: "Code sent to", code_label: "6-Digit Code", verifying: "Verifying...", login_confirm: "Enter BabyUp", back_email: "Change Email", my_babies: "My Babies", logout: "Logout", no_baby: "Welcome! Add a baby profile first", add_baby: "Add Baby", add_another: "Add Another Baby", back: "Back", new_profile: "New Profile", nickname: "Nickname", gender: "Gender", boy: "👦 Boy", girl: "👧 Girl", birth_date: "Birth Date", saving: "Saving...", create_btn: "Create Profile", switch_baby: "Switch", days_old: "days old", record_entry: "📝 Data Entry", edit_mode: "✏️ Edit Record", update_btn: "Save & Generate Report", weight_ph: "Weight (kg)", height_ph: "Height (cm)", head_ph: "Head Circ. (cm, optional)", ai_thinking: "AI Thinking...", gen_report: "Generate AI Report ✨", chart_title: "Growth Charts", realtime: "Live", history_title: "📅 History", view_report_btn: "📄 View Report", gen_report_btn: "✨ AI Report", report_title: "AI Insight", close: "Close", connecting: "Connecting to BabyUp...", edit: "Edit", del: "Del", no_report_yet: "No Report", outdated_hint: "Data changed? Regenerate report.", regenerate: "Regenerate Report", logging_in: "Logging in...", weight_tab: "Weight", height_tab: "Height", head_tab: "Head", date_too_early: "Invalid Date: Cannot be earlier than birth date!", reset_modal_title: "🔒 Set New Password", reset_modal_desc: "Please enter your new password to regain access", reset_confirm_btn: "Update Password", notes_title: "Notes", refs_title: "References", notes_who: "Based on the WHO Multicentre Growth Reference Study (MGRS). Generates z-scores and percentiles for children 0-5 years.", refs_who: "WHO Multicentre Growth Reference Study Group. WHO Child Growth Standards[S]. Geneva: World Health Organization, 2006.", notes_china: "Based on the latest industry standard issued by the NHC. Implemented on March 1, 2023.", refs_china: "National Health Commission of the PRC. WS/T 423—2022 Growth Standard for Children under 7 Years of Age[S]. Beijing: Standards Press of China, 2022.", share_btn: "Share Growth Poster", generating: "Drawing...", edit_profile: "Edit Profile", save_changes: "Save Changes", delete_profile: "🗑️ Delete Profile", date_warn: "⚠️ Changing DOB will recalculate all data",
-                // 🚀 V11.1
-                secure_reset: "Security Center", new_pass_title: "Set New Password", new_pass_desc: "Please enter your new password below"
+            en: { slogan: "Your AI Parenting Expert", login_tab: "Login", register_tab: "Register", login_btn: "Secure Login", register_btn: "Sign Up Now", forgot_password: "Forgot Password?", reset_title: "Reset Password", verify_title: "Verify Your Email", send_reset_code: "Send Reset Code", back_login: "Back to Login", confirm_btn: "Confirm Verify", set_password: "Set Password (min 6 chars)", password_label: "Password", email_label: "Email Address", sending: "Sending...", send_btn: "Get Code", code_sent_to: "Code sent to", code_label: "6-Digit Code", verifying: "Verifying...", login_confirm: "Enter BabyUp", back_email: "Change Email", my_babies: "My Babies", logout: "Logout", no_baby: "Welcome! Add a baby profile first", add_baby: "Add Baby", add_another: "Add Another Baby", back: "Back", new_profile: "New Profile", nickname: "Nickname", gender: "Gender", boy: "👦 Boy", girl: "👧 Girl", birth_date: "Birth Date", saving: "Saving...", create_btn: "Create Profile", switch_baby: "Switch", days_old: "days old", record_entry: "📝 Data Entry", edit_mode: "✏️ Edit Record", update_btn: "Save & Generate Report", weight_ph: "Weight (kg)", height_ph: "Height (cm)", head_ph: "Head Circ. (cm, optional)", ai_thinking: "AI Thinking...", gen_report: "Generate AI Report ✨", chart_title: "Growth Charts", realtime: "Live", history_title: "📅 History", view_report_btn: "📄 View Report", gen_report_btn: "✨ AI Report", report_title: "AI Insight", close: "Close", connecting: "Connecting to BabyUp...", edit: "Edit", del: "Del", no_report_yet: "No Report", outdated_hint: "Data changed? Regenerate report.", regenerate: "Regenerate Report", logging_in: "Logging in...", weight_tab: "Weight", height_tab: "Height", head_tab: "Head", date_too_early: "Invalid Date: Cannot be earlier than birth date!", notes_title: "Notes", refs_title: "References", notes_who: "Based on the WHO Multicentre Growth Reference Study (MGRS). Generates z-scores and percentiles for children 0-5 years.", refs_who: "WHO Multicentre Growth Reference Study Group. WHO Child Growth Standards[S]. Geneva: World Health Organization, 2006.", notes_china: "Based on the latest industry standard issued by the NHC. Implemented on March 1, 2023.", refs_china: "National Health Commission of the PRC. WS/T 423—2022 Growth Standard for Children under 7 Years of Age[S]. Beijing: Standards Press of China, 2022.", share_btn: "Share Growth Poster", generating: "Drawing...", edit_profile: "Edit Profile", save_changes: "Save Changes", delete_profile: "🗑️ Delete Profile", date_warn: "⚠️ Changing DOB will recalculate all data",
+                // 🚀 V11.2 New
+                verify_reset_title: "Secure Verification", verify_reset_desc: "Enter the 6-digit reset code sent to your email", verify_reset_btn: "Verify Code", secure_reset: "Security Center", new_pass_title: "Set New Password", new_pass_desc: "Please enter your new password below", reset_confirm_btn: "Update & Enter"
             }
         };
 
@@ -411,46 +412,27 @@
                 const standard = ref('who');
                 const activeChart = ref('weight');
                 const todayDate = new Date().toISOString().split('T')[0];
-                const showResetPasswordModal = ref(false); // 旧逻辑，可以保留防备用
-                const newPassword = ref('');
                 
-                // 🚀 V11.1: 新增密码重置专用状态
+                // 🚀 V11.2: 密码重置状态
                 const isPasswordResetMode = ref(false);
+                const newPassword = ref('');
 
                 const showEditBabyModal = ref(false);
                 const editingBaby = ref({ id: null, name: '', gender: '', birth_date: '' });
 
                 function changeStandard(s) { standard.value = s; nextTick(() => { calcPercentiles(); renderCharts(); }); }
 
-                // V9.0: 医疗数据引擎
+                // 数据引擎...
                 const growthData = {
                     who: {
-                        weight: { 
-                            male: { p3: [2.5,3.4,4.3,5.0,5.6,6.0,6.4,6.7,6.9,7.1,7.4,7.6,7.7], p50: [3.3,4.5,5.6,6.4,7.0,7.5,7.9,8.3,8.6,8.9,9.2,9.4,9.6], p97: [4.2,5.8,7.1,8.0,8.7,9.3,9.8,10.3,10.7,11.0,11.4,11.7,12.0] }, 
-                            female: { p3: [2.4,3.2,3.9,4.5,5.0,5.4,5.7,6.0,6.3,6.5,6.7,6.9,7.0], p50: [3.2,4.2,5.1,5.8,6.4,6.9,7.3,7.6,7.9,8.2,8.5,8.7,8.9], p97: [4.2,5.5,6.6,7.5,8.2,8.8,9.3,9.8,10.2,10.5,10.9,11.2,11.5] } 
-                        },
-                        height: {
-                            male: { p3: [46.1,50.8,54.4,57.3,59.7,61.7,63.3,64.8,66.2,67.5,68.7,69.9,71.0], p50: [49.9,54.7,58.4,61.4,63.9,65.9,67.6,69.2,70.6,72.0,73.3,74.5,75.7], p97: [53.7,58.6,62.4,65.5,68.0,70.1,71.9,73.5,75.0,76.5,77.9,79.2,80.5] },
-                            female: { p3: [45.4,49.8,53.0,55.6,57.8,59.6,61.2,62.7,64.0,65.3,66.5,67.7,68.9], p50: [49.1,53.7,57.1,59.8,62.1,64.0,65.7,67.3,68.7,70.1,71.5,72.8,74.0], p97: [52.9,57.6,61.1,64.0,66.4,68.5,70.3,71.9,73.5,75.0,76.4,77.8,79.2] }
-                        },
-                        head: {
-                            male: { p3: [31.9,34.8,36.7,38.1,39.3,40.3,41.2,42.0,42.7,43.3,43.9,44.5,45.0], p50: [34.5,37.3,39.1,40.5,41.6,42.6,43.5,44.2,44.8,45.4,46.0,46.5,47.0], p97: [37.2,39.8,41.5,42.9,44.0,45.0,45.8,46.5,47.1,47.6,48.2,48.7,49.2] },
-                            female: { p3: [31.5,34.2,36.0,37.3,38.4,39.4,40.3,41.0,41.7,42.3,42.9,43.4,43.9], p50: [33.9,36.5,38.3,39.5,40.6,41.5,42.2,42.8,43.4,44.0,44.6,45.1,45.6], p97: [36.2,39.0,40.6,41.9,43.0,43.9,44.6,45.3,45.9,46.4,46.9,47.4,47.9] }
-                        }
+                        weight: { male: { p3: [2.5,3.4,4.3,5.0,5.6,6.0,6.4,6.7,6.9,7.1,7.4,7.6,7.7], p50: [3.3,4.5,5.6,6.4,7.0,7.5,7.9,8.3,8.6,8.9,9.2,9.4,9.6], p97: [4.2,5.8,7.1,8.0,8.7,9.3,9.8,10.3,10.7,11.0,11.4,11.7,12.0] }, female: { p3: [2.4,3.2,3.9,4.5,5.0,5.4,5.7,6.0,6.3,6.5,6.7,6.9,7.0], p50: [3.2,4.2,5.1,5.8,6.4,6.9,7.3,7.6,7.9,8.2,8.5,8.7,8.9], p97: [4.2,5.5,6.6,7.5,8.2,8.8,9.3,9.8,10.2,10.5,10.9,11.2,11.5] } },
+                        height: { male: { p3: [46.1,50.8,54.4,57.3,59.7,61.7,63.3,64.8,66.2,67.5,68.7,69.9,71.0], p50: [49.9,54.7,58.4,61.4,63.9,65.9,67.6,69.2,70.6,72.0,73.3,74.5,75.7], p97: [53.7,58.6,62.4,65.5,68.0,70.1,71.9,73.5,75.0,76.5,77.9,79.2,80.5] }, female: { p3: [45.4,49.8,53.0,55.6,57.8,59.6,61.2,62.7,64.0,65.3,66.5,67.7,68.9], p50: [49.1,53.7,57.1,59.8,62.1,64.0,65.7,67.3,68.7,70.1,71.5,72.8,74.0], p97: [52.9,57.6,61.1,64.0,66.4,68.5,70.3,71.9,73.5,75.0,76.4,77.8,79.2] } },
+                        head: { male: { p3: [31.9,34.8,36.7,38.1,39.3,40.3,41.2,42.0,42.7,43.3,43.9,44.5,45.0], p50: [34.5,37.3,39.1,40.5,41.6,42.6,43.5,44.2,44.8,45.4,46.0,46.5,47.0], p97: [37.2,39.8,41.5,42.9,44.0,45.0,45.8,46.5,47.1,47.6,48.2,48.7,49.2] }, female: { p3: [31.5,34.2,36.0,37.3,38.4,39.4,40.3,41.0,41.7,42.3,42.9,43.4,43.9], p50: [33.9,36.5,38.3,39.5,40.6,41.5,42.2,42.8,43.4,44.0,44.6,45.1,45.6], p97: [36.2,39.0,40.6,41.9,43.0,43.9,44.6,45.3,45.9,46.4,46.9,47.4,47.9] } }
                     },
                     china: {
-                        weight: {
-                            male: { p3: [2.6,3.6,4.6,5.4,6.0,6.5,7.0,7.3,7.6,7.9,8.2,8.4,8.6], p50: [3.5,4.9,6.0,6.9,7.6,8.2,8.7,9.1,9.4,9.7,10.0,10.3,10.5], p97: [4.4,6.2,7.5,8.5,9.3,10.0,10.6,11.1,11.5,11.9,12.3,12.6,12.9] },
-                            female: { p3: [2.6,3.4,4.2,4.9,5.5,6.0,6.4,6.7,7.0,7.3,7.5,7.7,7.9], p50: [3.4,4.5,5.5,6.4,7.0,7.6,8.1,8.5,8.8,9.1,9.4,9.7,9.9], p97: [4.3,5.7,7.0,8.0,8.8,9.5,10.0,10.5,10.9,11.3,11.7,12.0,12.3] }
-                        },
-                        height: {
-                            male: { p3: [47.1,51.8,55.5,58.5,61.0,63.1,65.0,66.6,68.0,69.5,70.8,72.0,73.3], p50: [50.8,55.8,59.6,62.5,65.1,67.3,69.3,71.0,72.5,74.0,75.3,76.6,78.0], p97: [54.5,59.8,63.7,66.6,69.1,71.3,73.3,75.1,76.8,78.4,79.9,81.3,82.7] },
-                            female: { p3: [46.5,50.8,54.4,57.3,59.7,61.9,63.8,65.4,66.8,68.2,69.6,70.8,72.0], p50: [50.1,54.7,58.4,61.3,63.9,66.1,68.0,69.7,71.2,72.7,74.0,75.3,76.7], p97: [53.7,58.6,62.4,65.4,68.0,70.3,72.2,73.9,75.6,77.1,78.6,80.0,81.4] }
-                        },
-                        head: {
-                            male: { p3: [32.5,35.0,36.8,38.1,39.1,40.1,40.9,41.6,42.2,42.8,43.3,43.8,44.3], p50: [35.2,37.8,39.6,40.9,42.0,43.0,43.8,44.5,45.1,45.7,46.2,46.7,47.2], p97: [37.7,40.5,42.3,43.7,44.8,45.8,46.7,47.4,48.0,48.6,49.1,49.6,50.1] },
-                            female: { p3: [31.9,34.3,36.0,37.3,38.4,39.3,40.1,40.8,41.4,41.9,42.4,42.9,43.4], p50: [34.5,37.0,38.8,40.1,41.2,42.1,42.9,43.6,44.2,44.8,45.3,45.8,46.3], p97: [37.0,39.7,41.5,42.8,44.0,45.0,45.8,46.5,47.1,47.7,48.2,48.7,49.2] }
-                        }
+                        weight: { male: { p3: [2.6,3.6,4.6,5.4,6.0,6.5,7.0,7.3,7.6,7.9,8.2,8.4,8.6], p50: [3.5,4.9,6.0,6.9,7.6,8.2,8.7,9.1,9.4,9.7,10.0,10.3,10.5], p97: [4.4,6.2,7.5,8.5,9.3,10.0,10.6,11.1,11.5,11.9,12.3,12.6,12.9] }, female: { p3: [2.6,3.4,4.2,4.9,5.5,6.0,6.4,6.7,7.0,7.3,7.5,7.7,7.9], p50: [3.4,4.5,5.5,6.4,7.0,7.6,8.1,8.5,8.8,9.1,9.4,9.7,9.9], p97: [4.3,5.7,7.0,8.0,8.8,9.5,10.0,10.5,10.9,11.3,11.7,12.0,12.3] } },
+                        height: { male: { p3: [47.1,51.8,55.5,58.5,61.0,63.1,65.0,66.6,68.0,69.5,70.8,72.0,73.3], p50: [50.8,55.8,59.6,62.5,65.1,67.3,69.3,71.0,72.5,74.0,75.3,76.6,78.0], p97: [54.5,59.8,63.7,66.6,69.1,71.3,73.3,75.1,76.8,78.4,79.9,81.3,82.7] }, female: { p3: [46.5,50.8,54.4,57.3,59.7,61.9,63.8,65.4,66.8,68.2,69.6,70.8,72.0], p50: [50.1,54.7,58.4,61.3,63.9,66.1,68.0,69.7,71.2,72.7,74.0,75.3,76.7], p97: [53.7,58.6,62.4,65.4,68.0,70.3,72.2,73.9,75.6,77.1,78.6,80.0,81.4] } },
+                        head: { male: { p3: [32.5,35.0,36.8,38.1,39.1,40.1,40.9,41.6,42.2,42.8,43.3,43.8,44.3], p50: [35.2,37.8,39.6,40.9,42.0,43.0,43.8,44.5,45.1,45.7,46.2,46.7,47.2], p97: [37.7,40.5,42.3,43.7,44.8,45.8,46.7,47.4,48.0,48.6,49.1,49.6,50.1] }, female: { p3: [31.9,34.3,36.0,37.3,38.4,39.3,40.1,40.8,41.4,41.9,42.4,42.9,43.4], p50: [34.5,37.0,38.8,40.1,41.2,42.1,42.9,43.6,44.2,44.8,45.3,45.8,46.3], p97: [37.0,39.7,41.5,42.8,44.0,45.0,45.8,46.5,47.1,47.7,48.2,48.7,49.2] } }
                     }
                 };
 
@@ -459,9 +441,40 @@
                 async function handleLogin() { if(!email.value||!password.value) return; loading.value=true; const {data,error}=await supabase.auth.signInWithPassword({email:email.value,password:password.value}); loading.value=false; if(error)alert(error.message);else user.value=data.user; }
                 async function handleRegister() { if(!email.value||!password.value) return; if(password.value.length<6)return alert('Min 6'); loading.value=true; const {data,error}=await supabase.auth.signUp({email:email.value,password:password.value}); loading.value=false; if(error)alert(error.message);else {authMode.value='verify';sentCode.value=true;} }
                 async function handleVerifyOtp() { if(!otpToken.value) return; loading.value=true; const {data,error}=await supabase.auth.verifyOtp({email:email.value,token:otpToken.value,type:'signup'}); loading.value=false; if(error)alert(error.message);else {user.value=data.user;authMode.value='login';} }
-                async function sendResetCode() { if(!email.value) return; loading.value=true; const {error}=await supabase.auth.resetPasswordForEmail(email.value, { redirectTo: window.location.href }); loading.value=false; if(error)alert(error.message);else alert(t.value.sending); }
-                async function signOut() { await supabase.auth.signOut(); user.value=null; babies.value=[]; currentBaby.value=null; authMode.value='login'; }
                 
+                // 🚀 V11.2: 发送重置验证码
+                async function sendResetCode() { 
+                    if(!email.value) return; 
+                    loading.value=true; 
+                    const {error} = await supabase.auth.resetPasswordForEmail(email.value); 
+                    loading.value=false; 
+                    if(error) alert(error.message);
+                    else { 
+                        authMode.value = 'verify_reset'; 
+                        otpToken.value = ''; // 清空输入框
+                    } 
+                }
+
+                // 🚀 V11.2: 校验重置验证码
+                async function handleVerifyResetOtp() {
+                    if(!otpToken.value) return;
+                    loading.value = true;
+                    const {data, error} = await supabase.auth.verifyOtp({
+                        email: email.value,
+                        token: otpToken.value,
+                        type: 'recovery' // 关键参数
+                    });
+                    loading.value = false;
+                    if(error) alert(error.message);
+                    else {
+                        // 验证成功，强制进入修改密码模式
+                        isPasswordResetMode.value = true;
+                    }
+                }
+
+                async function signOut() { await supabase.auth.signOut(); user.value=null; babies.value=[]; currentBaby.value=null; authMode.value='login'; isPasswordResetMode.value=false; }
+                
+                // 🚀 V11.2: 更新新密码并进入主页
                 async function updatePassword() { 
                     if(newPassword.value.length<6) return alert('Min 6 chars'); 
                     loading.value=true; 
@@ -469,10 +482,8 @@
                     loading.value=false; 
                     if(error) alert(error.message); 
                     else { 
-                        alert('Password updated successfully!'); 
-                        // 🚀 V11.1: 重置成功后，退出重置模式，显示主页
-                        isPasswordResetMode.value = false;
-                        showResetPasswordModal.value=false; // 清理旧状态
+                        alert('Success!'); 
+                        isPasswordResetMode.value = false; // 解除拦截，进入主页
                         newPassword.value=''; 
                     } 
                 }
@@ -741,11 +752,6 @@
                         supabase.auth.onAuthStateChange((event, session) => { 
                             user.value = session?.user || null; 
                             if(user.value) fetchBabies();
-                            
-                            // 🚀 V11.1: 检测到密码恢复事件，进入拦截模式
-                            if(event === 'PASSWORD_RECOVERY') {
-                                isPasswordResetMode.value = true;
-                            }
                         });
 
                         if(user.value) fetchBabies();
@@ -755,7 +761,7 @@
                     }
                 });
 
-                return { user, authMode, email, password, otpToken, sentCode, loading, globalLoading, babies, currentBaby, showAddBabyForm, newBaby, records, input, isEditing, percentiles, submitRecord, editRecord, cancelEdit, deleteRecord, showModal, currentRecord, regenerateReport, openReport, handleLogin, handleRegister, handleVerifyOtp, sendResetCode, signOut, createBaby, selectBaby, calculateAge, lang, t, toggleLang, changeStandard, standard, calcPercentiles, renderMarkdown, todayDate, activeChart, nextTick, renderCharts, showResetPasswordModal, newPassword, updatePassword, handleInput, generateShareImage, showEditBabyModal, editingBaby, openEditBabyModal, handleUpdateBaby, handleDeleteBaby, isPasswordResetMode };
+                return { user, authMode, email, password, otpToken, sentCode, loading, globalLoading, babies, currentBaby, showAddBabyForm, newBaby, records, input, isEditing, percentiles, submitRecord, editRecord, cancelEdit, deleteRecord, showModal, currentRecord, regenerateReport, openReport, handleLogin, handleRegister, handleVerifyOtp, sendResetCode, signOut, createBaby, selectBaby, calculateAge, lang, t, toggleLang, changeStandard, standard, calcPercentiles, renderMarkdown, todayDate, activeChart, nextTick, renderCharts, showResetPasswordModal, newPassword, updatePassword, handleInput, generateShareImage, showEditBabyModal, editingBaby, openEditBabyModal, handleUpdateBaby, handleDeleteBaby, isPasswordResetMode, handleVerifyResetOtp };
             }
         }).mount('#app');
     </script>
